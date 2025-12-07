@@ -10,6 +10,32 @@ import { sendPromiseReminder } from '@/app/actions/reminders';
 import { useState } from 'react';
 import Link from 'next/link';
 import { CardWithDetails } from '@/lib/types';
+import { toast } from 'sonner';
+import {
+	Card,
+	CardContent,
+	CardDescription,
+	CardHeader,
+	CardTitle,
+} from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import { Switch } from '@/components/ui/switch';
+import {
+	ArrowLeft,
+	Plus,
+	X,
+	Trash2,
+	Copy,
+	Check,
+	Mail,
+	Loader2,
+	Gift,
+} from 'lucide-react';
 
 const ITEM_TYPES = [
 	{ value: 'cash', label: '💰 Cash', emoji: '💰' },
@@ -24,7 +50,6 @@ const ITEM_TYPES = [
 export default function EditCardContent({ card }: { card: CardWithDetails }) {
 	const [isAdding, setIsAdding] = useState(false);
 	const [isLoading, setIsLoading] = useState(false);
-	const [error, setError] = useState('');
 	const [deleteId, setDeleteId] = useState<string | null>(null);
 	const [fulfillingId, setFulfillingId] = useState<string | null>(null);
 	const [sendingReminderId, setSendingReminderId] = useState<string | null>(
@@ -33,24 +58,24 @@ export default function EditCardContent({ card }: { card: CardWithDetails }) {
 	const [promisesVisible, setPromisesVisible] = useState(
 		card.promisesVisible
 	);
+	const [copied, setCopied] = useState(false);
 	const shareUrl = `${
 		process.env.NEXT_PUBLIC_APP_URL || window.location.origin
 	}/c/${card.shareCode}`;
 
 	async function handleAddItem(formData: FormData) {
 		setIsLoading(true);
-		setError('');
 
 		const result = await addCardItem(card.id, formData);
 
 		if (result.error) {
-			setError(result.error);
+			toast.error(result.error);
+			setIsLoading(false);
 		} else {
+			toast.success('Item added to your wish list! 🎁');
 			setIsAdding(false);
 			window.location.reload();
 		}
-
-		setIsLoading(false);
 	}
 
 	async function handleDelete(itemId: string) {
@@ -66,11 +91,12 @@ export default function EditCardContent({ card }: { card: CardWithDetails }) {
 		const result = await manuallyFulfillPromise(promiseId, card.userId);
 
 		if (result.error) {
-			alert(result.error);
+			toast.error(result.error);
+			setFulfillingId(null);
 		} else {
+			toast.success('Promise marked as fulfilled! 🎉');
 			window.location.reload();
 		}
-		setFulfillingId(null);
 	}
 
 	async function handleSendReminder(promiseId: string) {
@@ -80,14 +106,22 @@ export default function EditCardContent({ card }: { card: CardWithDetails }) {
 		const result = await sendPromiseReminder(promiseId);
 
 		if (result.error) {
-			alert(result.error);
+			toast.error(result.error);
 		} else {
-			alert('Reminder sent successfully! ✉️');
+			toast.success('Reminder sent successfully! ✉️');
 		}
 		setSendingReminderId(null);
 	}
 
 	async function handleToggleVisibility() {
+		// Only allow paid plans to toggle visibility
+		if (card.user.subscriptionPlan === 'free') {
+			toast.error(
+				'Upgrade to Basic or Premium plan to hide promise counts! 🎁'
+			);
+			return;
+		}
+
 		const newVisibility = !promisesVisible;
 		setPromisesVisible(newVisibility);
 		await updateCardVisibility(card.id, newVisibility);
@@ -95,391 +129,471 @@ export default function EditCardContent({ card }: { card: CardWithDetails }) {
 
 	function copyShareLink() {
 		navigator.clipboard.writeText(shareUrl);
-		alert('Link copied to clipboard! 🎄');
+		setCopied(true);
+		toast.success('Link copied to clipboard! 🎄');
+		setTimeout(() => setCopied(false), 2000);
 	}
 
 	return (
-		<div className='min-h-screen bg-linear-to-br from-red-700 via-green-800 to-red-900 p-4'>
-			<div className='max-w-4xl mx-auto'>
+		<div className='min-h-screen bg-gradient-to-br from-primary via-secondary to-primary p-4'>
+			<div className='max-w-4xl mx-auto space-y-6'>
 				{/* Header */}
-				<div className='bg-white rounded-2xl shadow-2xl p-6 border-4 border-red-600 mb-6'>
-					<div className='flex justify-between items-start mb-4'>
-						<div className='flex-1'>
-							<h1 className='text-3xl font-bold text-green-800 mb-2'>
-								{card.title}
-							</h1>
-							{card.description && (
-								<p className='text-gray-600'>
-									{card.description}
+				<Card className='border-accent/20 shadow-2xl'>
+					<CardHeader>
+						<div className='flex justify-between items-start'>
+							<div className='flex-1'>
+								<CardTitle className='text-3xl font-serif text-primary mb-2'>
+									{card.title}
+								</CardTitle>
+								{card.description && (
+									<CardDescription className='text-base'>
+										{card.description}
+									</CardDescription>
+								)}
+							</div>
+							<Link href='/dashboard'>
+								<Button
+									variant='outline'
+									size='sm'
+								>
+									<ArrowLeft className='mr-2 h-4 w-4' />
+									Back
+								</Button>
+							</Link>
+						</div>
+					</CardHeader>
+
+					<CardContent className='space-y-4'>
+						{/* Promise Visibility Toggle */}
+						<div className='flex items-center justify-between p-4 bg-secondary/5 rounded-lg border border-secondary/20'>
+							<div className='space-y-1'>
+								<Label className='text-sm font-medium'>
+									Promise Visibility
+									{card.user.subscriptionPlan === 'free' && (
+										<Badge
+											variant='secondary'
+											className='ml-2'
+										>
+											Premium Feature
+										</Badge>
+									)}
+								</Label>
+								<p className='text-xs text-muted-foreground'>
+									{promisesVisible
+										? 'Promises are visible to the public'
+										: 'Promises are hidden from public view'}
 								</p>
-							)}
-						</div>
-						<Link
-							href='/dashboard'
-							className='bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors'
-						>
-							← Back
-						</Link>
-					</div>
-
-					{/* Promise Visibility Toggle */}
-					<div className='mb-4 flex items-center justify-between p-3 bg-gray-50 rounded-lg border-2 border-gray-300'>
-						<div>
-							<p className='text-sm font-medium text-gray-700'>
-								Promise Visibility
-							</p>
-							<p className='text-xs text-gray-500'>
-								{promisesVisible
-									? 'Promises are visible to the public'
-									: 'Promises are hidden from public view'}
-							</p>
-						</div>
-						<button
-							title='show promises'
-							onClick={handleToggleVisibility}
-							className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-								promisesVisible ? 'bg-green-600' : 'bg-gray-300'
-							}`}
-						>
-							<span
-								className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-									promisesVisible
-										? 'translate-x-6'
-										: 'translate-x-1'
-								}`}
+								{card.user.subscriptionPlan === 'free' && (
+									<p className='text-xs text-christmas-red'>
+										Upgrade to Basic or Premium to hide
+										promise counts
+									</p>
+								)}
+							</div>
+							<Switch
+								checked={promisesVisible}
+								onCheckedChange={handleToggleVisibility}
+								disabled={card.user.subscriptionPlan === 'free'}
 							/>
-						</button>
-					</div>
-
-					{/* Share Section */}
-					<div className='bg-green-50 border-2 border-green-600 rounded-lg p-4'>
-						<label
-							htmlFor='share-url'
-							className='block text-sm font-medium text-gray-700 mb-2'
-						>
-							Share your card:
-						</label>
-						<div className='flex gap-2'>
-							<input
-								id='share-url'
-								type='text'
-								value={shareUrl}
-								readOnly
-								title='Card share URL'
-								placeholder='Your card share link'
-								className='flex-1 px-3 py-2 border-2 border-green-600 rounded-lg bg-white'
-							/>
-							<button
-								title='copy share link'
-								onClick={copyShareLink}
-								className='bg-green-700 text-white px-6 py-2 rounded-lg hover:bg-green-800 transition-colors whitespace-nowrap'
-							>
-								📋 Copy
-							</button>
 						</div>
-					</div>
-				</div>
+
+						{/* Share Section */}
+						<div className='bg-accent/5 border border-accent/20 rounded-lg p-4'>
+							<Label className='block text-sm font-medium mb-2'>
+								Share your card:
+							</Label>
+							<div className='flex gap-2'>
+								<Input
+									type='text'
+									value={shareUrl}
+									readOnly
+									className='flex-1'
+								/>
+								<Button
+									onClick={copyShareLink}
+									variant='default'
+									size='icon'
+									className='shrink-0'
+								>
+									{copied ? (
+										<Check className='h-4 w-4' />
+									) : (
+										<Copy className='h-4 w-4' />
+									)}
+								</Button>
+							</div>
+						</div>
+					</CardContent>
+				</Card>
 
 				{/* Items List */}
-				<div className='bg-white rounded-2xl shadow-2xl p-6 border-4 border-red-600 mb-6'>
-					<div className='flex justify-between items-center mb-6'>
-						<h2 className='text-2xl font-bold text-green-800'>
-							My Wish List ({card.items.length})
-						</h2>
-						<button
-							title='add item'
-							onClick={() => setIsAdding(!isAdding)}
-							className='bg-linear-to-r from-red-600 to-green-700 text-white px-6 py-2 rounded-lg hover:from-red-700 hover:to-green-800 transition-all'
-						>
-							{isAdding ? 'Cancel' : '➕ Add Item'}
-						</button>
-					</div>
-
-					{/* Add Item Form */}
-					{isAdding && (
-						<form
-							action={handleAddItem}
-							className='mb-6 p-4 bg-green-50 rounded-lg border-2 border-green-600'
-						>
-							<div className='grid md:grid-cols-2 gap-4 mb-4'>
-								<div>
-									<label className='block text-sm font-medium text-gray-700 mb-2'>
-										Item Name *
-									</label>
-									<input
-										type='text'
-										name='name'
-										required
-										className='w-full px-3 py-2 border-2 border-green-600 rounded-lg text-gray-900'
-										placeholder='iPhone 16 Pro'
-										disabled={isLoading}
-									/>
-								</div>
-								<div>
-									<label className='block text-sm font-medium text-gray-700 mb-2'>
-										Type *
-									</label>
-									<select
-										title='select item'
-										name='itemType'
-										required
-										className='w-full px-3 py-2 border-2 border-green-600 rounded-lg text-gray-900'
-										disabled={isLoading}
-									>
-										{ITEM_TYPES.map((type) => (
-											<option
-												key={type.value}
-												value={type.value}
-											>
-												{type.label}
-											</option>
-										))}
-									</select>
-								</div>
-							</div>
-
-							<div className='mb-4'>
-								<label className='block text-sm font-medium text-gray-700 mb-2'>
-									Description (Optional)
-								</label>
-								<textarea
-									name='description'
-									rows={2}
-									className='w-full px-3 py-2 border-2 border-green-600 rounded-lg text-gray-900'
-									placeholder='Space Grey, 256GB...'
-									disabled={isLoading}
-								/>
-							</div>
-
-							<div className='mb-4'>
-								<label className='block text-sm font-medium text-gray-700 mb-2'>
-									Quantity
-								</label>
-								<input
-									title='quantity'
-									type='number'
-									name='quantity'
-									min='1'
-									defaultValue='1'
-									className='w-full px-3 py-2 border-2 border-green-600 rounded-lg text-gray-900'
-									disabled={isLoading}
-								/>
-							</div>
-
-							{error && (
-								<div className='mb-4 p-3 bg-red-100 text-red-800 rounded-lg border-2 border-red-600'>
-									{error}
-								</div>
-							)}
-
-							<button
-								title='submit new item'
-								type='submit'
-								disabled={isLoading}
-								className='w-full bg-linear-to-r from-red-600 to-green-700 text-white font-bold py-3 rounded-lg hover:from-red-700 hover:to-green-800 disabled:opacity-50'
+				<Card className='border-accent/20 shadow-2xl'>
+					<CardHeader>
+						<div className='flex justify-between items-center'>
+							<CardTitle className='text-2xl font-serif'>
+								My Wish List ({card.items.length})
+							</CardTitle>
+							<Button
+								onClick={() => setIsAdding(!isAdding)}
+								variant={isAdding ? 'outline' : 'default'}
+								className={
+									!isAdding
+										? 'bg-gradient-to-r from-primary to-secondary hover:from-primary/90 hover:to-secondary/90'
+										: ''
+								}
 							>
-								{isLoading ? 'Adding...' : '✨ Add to List'}
-							</button>
-						</form>
-					)}
-
-					{/* Items Grid */}
-					{card.items.length === 0 ? (
-						<div className='text-center py-12'>
-							<div className='text-6xl mb-4'>🎁</div>
-							<p className='text-gray-600'>
-								No items yet. Add your first wish!
-							</p>
+								{isAdding ? (
+									<>
+										<X className='mr-2 h-4 w-4' />
+										Cancel
+									</>
+								) : (
+									<>
+										<Plus className='mr-2 h-4 w-4' />
+										Add Item
+									</>
+								)}
+							</Button>
 						</div>
-					) : (
-						<div className='space-y-4'>
-							{card.items.map((item) => {
-								const itemType = ITEM_TYPES.find(
-									(t) => t.value === item.itemType
-								);
-								const verifiedPromises = item.promises.filter(
-									(p) => p.verified
-								);
-								const promiseCount = verifiedPromises.length;
+					</CardHeader>
 
-								return (
-									<div
-										key={item.id}
-										className='border-2 border-green-600 rounded-lg p-4 hover:shadow-lg transition-shadow'
-									>
-										<div className='flex justify-between items-start'>
-											<div className='flex-1'>
-												<div className='flex items-center gap-2 mb-2'>
-													<span className='text-2xl'>
-														{itemType?.emoji}
-													</span>
-													<h3 className='text-xl font-bold text-gray-800'>
-														{item.name}
-													</h3>
-													{item.quantity > 1 && (
-														<span className='text-sm text-gray-600'>
-															(x{item.quantity})
-														</span>
-													)}
-												</div>
-												{item.description && (
-													<p className='text-gray-600 mb-2'>
-														{item.description}
-													</p>
-												)}
-												<p className='text-sm text-green-700 font-medium'>
-													{promiseCount > 0
-														? `🎉 ${promiseCount} promise${
-																promiseCount > 1
-																	? 's'
-																	: ''
-														  }`
-														: '⏳ No promises yet'}
-												</p>
-											</div>
-											<button
-												title='delete item'
-												onClick={() =>
-													handleDelete(item.id)
-												}
-												disabled={deleteId === item.id}
-												className='text-red-600 hover:text-red-800 font-bold px-3 py-1 rounded disabled:opacity-50'
-											>
-												🗑️
-											</button>
+					<CardContent className='space-y-6'>
+						{/* Add Item Form */}
+						{isAdding && (
+							<div className='p-4 bg-secondary/5 rounded-lg border border-secondary/20'>
+								<form
+									action={handleAddItem}
+									className='space-y-4'
+								>
+									<div className='grid md:grid-cols-2 gap-4'>
+										<div className='space-y-2'>
+											<Label htmlFor='name'>
+												Item Name *
+											</Label>
+											<Input
+												id='name'
+												name='name'
+												placeholder='iPhone 16 Pro'
+												required
+												disabled={isLoading}
+											/>
 										</div>
-
-										{/* Show promises for this item */}
-										{item.promises.length > 0 && (
-											<div className='mt-4 pt-4 border-t-2 border-gray-200'>
-												<p className='text-sm font-medium text-gray-700 mb-2'>
-													Promises (
-													{verifiedPromises.length}{' '}
-													verified /{' '}
-													{item.promises.length}{' '}
-													total):
-												</p>
-												<div className='space-y-2'>
-													{item.promises.map(
-														(promise) => (
-															<div
-																key={promise.id}
-																className={`p-3 rounded-lg text-sm ${
-																	promise.verified
-																		? 'bg-green-50 border-2 border-green-200'
-																		: 'bg-gray-50 border-2 border-gray-200 opacity-60'
-																}`}
-															>
-																<div className='flex items-start justify-between'>
-																	<div className='flex-1'>
-																		<p className='font-bold text-green-800'>
-																			{
-																				promise.promiserName
-																			}
-																			{promise.fulfilled ? (
-																				<span className='ml-2 text-xs bg-blue-600 text-white px-2 py-1 rounded'>
-																					✓
-																					Fulfilled
-																				</span>
-																			) : promise.verified ? (
-																				<span className='ml-2 text-xs bg-green-600 text-white px-2 py-1 rounded'>
-																					✓
-																					Verified
-																				</span>
-																			) : (
-																				<span className='ml-2 text-xs bg-gray-400 text-white px-2 py-1 rounded'>
-																					⏳
-																					Pending
-																				</span>
-																			)}
-																		</p>
-																		<p className='text-gray-700'>
-																			{
-																				promise.promiserEmail
-																			}
-																		</p>
-																		{promise.promiserContact && (
-																			<p className='text-gray-600'>
-																				Contact:{' '}
-																				{
-																					promise.promiserContact
-																				}
-																			</p>
-																		)}
-																		{promise.message && (
-																			<p className='text-gray-600 mt-1 italic'>
-																				&quot;
-																				{
-																					promise.message
-																				}
-																				&quot;
-																			</p>
-																		)}
-																		{promise.fulfilledAt && (
-																			<p className='text-xs text-gray-500 mt-1'>
-																				Fulfilled:{' '}
-																				{new Date(
-																					promise.fulfilledAt
-																				).toLocaleDateString()}
-																			</p>
-																		)}
-																	</div>
-																	{promise.verified &&
-																		!promise.fulfilled &&
-																		item.itemType !==
-																			'cash' && (
-																			<button
-																				title='mark as fulfilled'
-																				onClick={() =>
-																					handleFulfill(
-																						promise.id
-																					)
-																				}
-																				disabled={
-																					fulfillingId ===
-																					promise.id
-																				}
-																				className='ml-2 text-xs bg-green-600 text-white px-3 py-1.5 rounded hover:bg-green-700 disabled:opacity-50'
-																			>
-																				{fulfillingId ===
-																				promise.id
-																					? 'Marking...'
-																					: '✓ Mark Fulfilled'}
-																			</button>
-																		)}
-																	{!promise.fulfilled && (
-																		<button
-																			title='send reminder'
-																			onClick={() =>
-																				handleSendReminder(
-																					promise.id
-																				)
-																			}
-																			disabled={
-																				sendingReminderId ===
-																				promise.id
-																			}
-																			className='ml-2 text-xs bg-blue-600 text-white px-3 py-1.5 rounded hover:bg-blue-700 disabled:opacity-50'
-																		>
-																			{sendingReminderId ===
-																			promise.id
-																				? 'Sending...'
-																				: '📧 Send Reminder'}
-																		</button>
-																	)}
-																</div>
-															</div>
-														)
-													)}
-												</div>
-											</div>
-										)}
+										<div className='space-y-2'>
+											<Label htmlFor='itemType'>
+												Type *
+											</Label>
+											<select
+												id='itemType'
+												name='itemType'
+												required
+												disabled={isLoading}
+												className='flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50'
+											>
+												{ITEM_TYPES.map((type) => (
+													<option
+														key={type.value}
+														value={type.value}
+													>
+														{type.label}
+													</option>
+												))}
+											</select>
+										</div>
 									</div>
-								);
-							})}
-						</div>
-					)}
-				</div>
+
+									<div className='space-y-2'>
+										<Label htmlFor='description'>
+											Description (Optional)
+										</Label>
+										<Textarea
+											id='description'
+											name='description'
+											rows={2}
+											placeholder='Space Grey, 256GB...'
+											disabled={isLoading}
+										/>
+									</div>
+
+									<div className='space-y-2'>
+										<Label htmlFor='quantity'>
+											Quantity
+										</Label>
+										<Input
+											id='quantity'
+											type='number'
+											name='quantity'
+											min='1'
+											defaultValue='1'
+											disabled={isLoading}
+										/>
+									</div>
+
+									<Button
+										type='submit'
+										disabled={isLoading}
+										className='w-full bg-gradient-to-r from-primary to-secondary hover:from-primary/90 hover:to-secondary/90'
+									>
+										{isLoading ? (
+											<>
+												<Loader2 className='mr-2 h-4 w-4 animate-spin' />
+												Adding...
+											</>
+										) : (
+											<>
+												<Gift className='mr-2 h-4 w-4' />
+												Add to List
+											</>
+										)}
+									</Button>
+								</form>
+							</div>
+						)}
+
+						{/* Items Grid */}
+						{card.items.length === 0 ? (
+							<div className='text-center py-12'>
+								<Gift className='h-16 w-16 mx-auto mb-4 text-muted-foreground' />
+								<p className='text-muted-foreground'>
+									No items yet. Add your first wish!
+								</p>
+							</div>
+						) : (
+							<div className='space-y-4'>
+								{card.items.map((item) => {
+									const itemType = ITEM_TYPES.find(
+										(t) => t.value === item.itemType
+									);
+									const verifiedPromises =
+										item.promises.filter((p) => p.verified);
+									const promiseCount =
+										verifiedPromises.length;
+
+									return (
+										<div
+											key={item.id}
+											className='border border-accent/20 rounded-lg p-4 hover:shadow-lg transition-shadow bg-card'
+										>
+											<div className='flex justify-between items-start gap-4'>
+												<div className='flex-1 space-y-2'>
+													<div className='flex items-center gap-2'>
+														<span className='text-2xl'>
+															{itemType?.emoji}
+														</span>
+														<h3 className='text-xl font-bold'>
+															{item.name}
+														</h3>
+														{item.quantity > 1 && (
+															<Badge variant='secondary'>
+																x{item.quantity}
+															</Badge>
+														)}
+													</div>
+													{item.description && (
+														<p className='text-muted-foreground text-sm'>
+															{item.description}
+														</p>
+													)}
+													<div className='flex items-center gap-2'>
+														{promiseCount > 0 ? (
+															<Badge className='bg-secondary text-secondary-foreground'>
+																🎉{' '}
+																{promiseCount}{' '}
+																promise
+																{promiseCount >
+																1
+																	? 's'
+																	: ''}
+															</Badge>
+														) : (
+															<Badge variant='outline'>
+																⏳ No promises
+																yet
+															</Badge>
+														)}
+													</div>
+												</div>
+												<Button
+													variant='ghost'
+													size='icon'
+													onClick={() =>
+														handleDelete(item.id)
+													}
+													disabled={
+														deleteId === item.id
+													}
+													className='text-destructive hover:text-destructive hover:bg-destructive/10'
+												>
+													{deleteId === item.id ? (
+														<Loader2 className='h-4 w-4 animate-spin' />
+													) : (
+														<Trash2 className='h-4 w-4' />
+													)}
+												</Button>
+											</div>
+
+											{/* Show promises for this item */}
+											{item.promises.length > 0 && (
+												<>
+													<Separator className='my-4' />
+													<div className='space-y-3'>
+														<p className='text-sm font-medium'>
+															Promises (
+															{
+																verifiedPromises.length
+															}{' '}
+															verified /{' '}
+															{
+																item.promises
+																	.length
+															}{' '}
+															total)
+														</p>
+														<div className='space-y-2'>
+															{item.promises.map(
+																(promise) => (
+																	<div
+																		key={
+																			promise.id
+																		}
+																		className={`p-3 rounded-lg border ${
+																			promise.verified
+																				? 'bg-secondary/10 border-secondary/30'
+																				: 'bg-muted/50 border-muted opacity-60'
+																		}`}
+																	>
+																		<div className='flex items-start justify-between gap-3'>
+																			<div className='flex-1 space-y-1'>
+																				<div className='flex items-center gap-2'>
+																					<p className='font-semibold text-sm'>
+																						{
+																							promise.promiserName
+																						}
+																					</p>
+																					{promise.fulfilled ? (
+																						<Badge className='bg-blue-600 hover:bg-blue-700'>
+																							✓
+																							Fulfilled
+																						</Badge>
+																					) : promise.verified ? (
+																						<Badge className='bg-secondary hover:bg-secondary/90'>
+																							✓
+																							Verified
+																						</Badge>
+																					) : (
+																						<Badge variant='secondary'>
+																							⏳
+																							Pending
+																						</Badge>
+																					)}
+																				</div>
+																				<p className='text-xs text-muted-foreground'>
+																					{
+																						promise.promiserEmail
+																					}
+																				</p>
+																				{promise.promiserContact && (
+																					<p className='text-xs text-muted-foreground'>
+																						Contact:{' '}
+																						{
+																							promise.promiserContact
+																						}
+																					</p>
+																				)}
+																				{promise.message && (
+																					<p className='text-sm italic mt-2'>
+																						&quot;
+																						{
+																							promise.message
+																						}
+																						&quot;
+																					</p>
+																				)}
+																				{promise.fulfilledAt && (
+																					<p className='text-xs text-muted-foreground mt-1'>
+																						Fulfilled:{' '}
+																						{new Date(
+																							promise.fulfilledAt
+																						).toLocaleDateString()}
+																					</p>
+																				)}
+																			</div>
+																			<div className='flex flex-col gap-2'>
+																				{promise.verified &&
+																					!promise.fulfilled &&
+																					item.itemType !==
+																						'cash' && (
+																						<Button
+																							size='sm'
+																							onClick={() =>
+																								handleFulfill(
+																									promise.id
+																								)
+																							}
+																							disabled={
+																								fulfillingId ===
+																								promise.id
+																							}
+																							className='bg-secondary hover:bg-secondary/90'
+																						>
+																							{fulfillingId ===
+																							promise.id ? (
+																								<>
+																									<Loader2 className='mr-1 h-3 w-3 animate-spin' />
+																									Marking...
+																								</>
+																							) : (
+																								<>
+																									<Check className='mr-1 h-3 w-3' />
+																									Mark
+																									Fulfilled
+																								</>
+																							)}
+																						</Button>
+																					)}
+																				{!promise.fulfilled && (
+																					<Button
+																						size='sm'
+																						variant='outline'
+																						onClick={() =>
+																							handleSendReminder(
+																								promise.id
+																							)
+																						}
+																						disabled={
+																							sendingReminderId ===
+																							promise.id
+																						}
+																					>
+																						{sendingReminderId ===
+																						promise.id ? (
+																							<>
+																								<Loader2 className='mr-1 h-3 w-3 animate-spin' />
+																								Sending...
+																							</>
+																						) : (
+																							<>
+																								<Mail className='mr-1 h-3 w-3' />
+																								Remind
+																							</>
+																						)}
+																					</Button>
+																				)}
+																			</div>
+																		</div>
+																	</div>
+																)
+															)}
+														</div>
+													</div>
+												</>
+											)}
+										</div>
+									);
+								})}
+							</div>
+						)}
+					</CardContent>
+				</Card>
 			</div>
 		</div>
 	);

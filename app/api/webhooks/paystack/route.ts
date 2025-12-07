@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { sendFulfillmentNotificationEmail } from '@/lib/email';
+import { recordRevenue } from '@/lib/revenue';
+import { upgradeSubscription } from '@/app/actions/subscriptions';
 import crypto from 'crypto';
 
 export async function POST(req: NextRequest) {
@@ -33,6 +35,37 @@ export async function POST(req: NextRequest) {
 		// Handle successful payment
 		if (event.event === 'charge.success') {
 			const { reference, metadata, amount } = event.data;
+
+			// Check if this is a subscription payment
+			if (metadata.type === 'subscription') {
+				const { userId, plan } = metadata;
+
+				// Upgrade the subscription
+				const result = await upgradeSubscription(
+					userId,
+					plan,
+					reference
+				);
+
+				if (result.error) {
+					console.error('Subscription upgrade error:', result.error);
+					return NextResponse.json(
+						{ error: result.error },
+						{ status: 500 }
+					);
+				}
+
+				console.log(
+					`Subscription upgraded: User ${userId} to ${plan} plan`
+				);
+
+				return NextResponse.json({
+					received: true,
+					type: 'subscription',
+				});
+			}
+
+			// Original promise payment handling
 			const promiseId = metadata.promiseId;
 
 			// Mark promise as fulfilled
@@ -89,6 +122,23 @@ export async function POST(req: NextRequest) {
 				},
 			});
 
+			// Record revenue from service charge
+			await recordRevenue({
+				amount: serviceCharge,
+				type: 'payment_fee',
+				source: `Payment service charge for ${promise.item.name}`,
+				userId: cardOwner.id,
+				promiseId: promiseId,
+				metadata: {
+					reference,
+					grossAmount: amountInNaira,
+					netAmount: amountAfterCharge,
+					promiserName: promise.promiserName,
+					promiserEmail: promise.promiserEmail,
+					itemName: promise.item.name,
+				},
+			});
+
 			// Send fulfillment notification to card owner
 			await sendFulfillmentNotificationEmail(
 				promise.item.card.user.email,
@@ -98,6 +148,8 @@ export async function POST(req: NextRequest) {
 				promise.item.card.title,
 				reference
 			);
+
+			return NextResponse.json({ received: true, type: 'promise' });
 		}
 
 		return NextResponse.json({ received: true });

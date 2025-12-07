@@ -14,5 +14,10 @@ export default async function PublicCardPage({
 		notFound();
 	}
 
-	return <PublicCardView card={card} />;
+	return (
+		<PublicCardView
+			card={card}
+			ownerReferralCode={card.user.referralCode || ''}
+		/>
+	);
 }

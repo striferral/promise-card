@@ -3,20 +3,24 @@
 import { createCard } from '@/app/actions/cards';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Loader2, Gift, X } from 'lucide-react';
+import { toast } from 'sonner';
 
 export default function CreateCardForm() {
 	const [isLoading, setIsLoading] = useState(false);
-	const [error, setError] = useState('');
 	const router = useRouter();
 
 	async function handleSubmit(formData: FormData) {
 		setIsLoading(true);
-		setError('');
 
 		const result = await createCard(formData);
 
 		if (result?.error) {
-			setError(result.error);
+			toast.error(result.error);
 			setIsLoading(false);
 		}
 		// If successful, the createCard action will redirect
@@ -27,63 +31,60 @@ export default function CreateCardForm() {
 			action={handleSubmit}
 			className='space-y-6'
 		>
-			<div>
-				<label
-					htmlFor='title'
-					className='block text-sm font-medium text-gray-700 mb-2'
-				>
-					Card Title *
-				</label>
-				<input
-					type='text'
+			<div className='space-y-2'>
+				<Label htmlFor='title'>Card Title *</Label>
+				<Input
 					id='title'
 					name='title'
+					type='text'
 					required
-					className='w-full px-4 py-3 border-2 border-green-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent text-gray-900'
-					placeholder='My Christmas Wishes 2024'
+					placeholder='My Christmas Wishes 2025'
 					disabled={isLoading}
+					className='h-12'
 				/>
 			</div>
 
-			<div>
-				<label
-					htmlFor='description'
-					className='block text-sm font-medium text-gray-700 mb-2'
-				>
-					Description (Optional)
-				</label>
-				<textarea
+			<div className='space-y-2'>
+				<Label htmlFor='description'>Description (Optional)</Label>
+				<Textarea
 					id='description'
 					name='description'
 					rows={4}
-					className='w-full px-4 py-3 border-2 border-green-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent text-gray-900'
 					placeholder='A little message for those who want to bless me this Christmas...'
 					disabled={isLoading}
 				/>
 			</div>
 
-			{error && (
-				<div className='p-4 bg-red-100 text-red-800 rounded-lg border-2 border-red-600'>
-					{error}
-				</div>
-			)}
-
-			<div className='flex gap-4'>
-				<button
+			<div className='flex gap-3'>
+				<Button
 					type='button'
 					onClick={() => router.back()}
 					disabled={isLoading}
-					className='flex-1 bg-gray-500 text-white font-bold py-3 px-6 rounded-lg hover:bg-gray-600 disabled:opacity-50 transition-all'
+					variant='outline'
+					size='lg'
+					className='flex-1'
 				>
+					<X className='mr-2 h-4 w-4' />
 					Cancel
-				</button>
-				<button
+				</Button>
+				<Button
 					type='submit'
 					disabled={isLoading}
-					className='flex-1 bg-gradient-to-r from-red-600 to-green-700 text-white font-bold py-3 px-6 rounded-lg hover:from-red-700 hover:to-green-800 disabled:opacity-50 transition-all shadow-lg'
+					size='lg'
+					className='flex-1 bg-gradient-to-r from-primary to-secondary hover:from-primary/90 hover:to-secondary/90'
 				>
-					{isLoading ? 'Creating...' : '🎄 Create Card'}
-				</button>
+					{isLoading ? (
+						<>
+							<Loader2 className='mr-2 h-5 w-5 animate-spin' />
+							Creating...
+						</>
+					) : (
+						<>
+							<Gift className='mr-2 h-5 w-5' />
+							Create Card
+						</>
+					)}
+				</Button>
 			</div>
 		</form>
 	);

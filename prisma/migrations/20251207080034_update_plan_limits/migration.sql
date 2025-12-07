@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "User" ALTER COLUMN "cardLimit" SET DEFAULT 1,
+ALTER COLUMN "itemsPerCardLimit" SET DEFAULT 5;

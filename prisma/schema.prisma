@@ -16,14 +16,23 @@ model User {
   bankCode          String?
   profession        String?
   walletBalance     Float    @default(0) // Balance in Naira
+  subscriptionPlan  String   @default("free") // "free", "basic", "premium"
+  cardLimit         Int      @default(1) // Max cards for free tier
+  itemsPerCardLimit Int      @default(5) // Max items per card
+  referralCode      String?  @unique // Unique referral code
+  referredBy        String? // ID of user who referred this user
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
   accountDetailsSet Boolean  @default(false)
 
-  cards             Card[]
-  tokens            MagicToken[]
-  transactions      WalletTransaction[]
-  withdrawals       Withdrawal[]
+  cards            Card[]
+  transactions     WalletTransaction[]
+  withdrawals      Withdrawal[]
+  subscriptions    Subscription[]
+  revenue          Revenue[]
+  referrals        Referral[]          @relation("ReferrerReferrals")
+  referredByUsers  Referral[]          @relation("ReferredUserReferral")
+  referralEarnings ReferralEarning[]
 }
 
 model MagicToken {
@@ -32,8 +41,6 @@ model MagicToken {
   email     String
   expiresAt DateTime
   createdAt DateTime @default(now())
-
-  user      User     @relation(fields: [email], references: [email], onDelete: Cascade)
 
   @@index([email])
   @@index([token])
@@ -45,16 +52,19 @@ model Card {
   description     String?
   shareCode       String   @unique
   promisesVisible Boolean  @default(true) // Toggle for public/private promises
+  isFeatured      Boolean  @default(false) // Premium feature
+  isPremium       Boolean  @default(false) // Premium card
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  userId          String
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  items           CardItem[]
+  items CardItem[]
 
   @@index([userId])
   @@index([shareCode])
+  @@index([isFeatured])
 }
 
 model CardItem {
@@ -62,83 +72,83 @@ model CardItem {
   name        String
   description String?
   quantity    Int      @default(1)
-  itemType    String   // "cash", "shoes", "bag", "clothing", "other"
+  itemType    String // "cash", "shoes", "bag", "clothing", "other"
   createdAt   DateTime @default(now())
 
-  cardId      String
-  card        Card     @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  cardId String
+  card   Card   @relation(fields: [cardId], references: [id], onDelete: Cascade)
 
-  promises    Promise[]
+  promises Promise[]
 
   @@index([cardId])
 }
 
 model Promise {
-  id              String   @id @default(cuid())
-  promiserName    String
-  promiserEmail   String   @default("unverified@placeholder.com")
-  promiserContact String?
-  amount          String?  // For cash promises or general description
-  message         String?
-  verified        Boolean  @default(false)
-  verifiedAt      DateTime?
-  fulfilled       Boolean  @default(false)
-  fulfilledAt     DateTime?
+  id               String    @id @default(cuid())
+  promiserName     String
+  promiserEmail    String    @default("unverified@placeholder.com")
+  promiserContact  String?
+  amount           String? // For cash promises or general description
+  message          String?
+  verified         Boolean   @default(false)
+  verifiedAt       DateTime?
+  fulfilled        Boolean   @default(false)
+  fulfilledAt      DateTime?
   paymentReference String? // Paystack payment reference
-  createdAt       DateTime @default(now())
+  createdAt        DateTime  @default(now())
 
-  itemId          String
-  item            CardItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  itemId String
+  item   CardItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
 
   @@index([itemId])
   @@index([promiserEmail])
 }
 
 model PromiseVerificationToken {
-  id         String   @id @default(cuid())
-  token      String   @unique
-  promiseId  String   @unique
-  email      String
-  expiresAt  DateTime
-  createdAt  DateTime @default(now())
+  id        String   @id @default(cuid())
+  token     String   @unique
+  promiseId String   @unique
+  email     String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
 
   @@index([token])
   @@index([email])
 }
 
 model WalletTransaction {
-  id              String   @id @default(cuid())
-  userId          String
-  amount          Float    // Amount in Naira
-  type            String   // "credit" or "debit"
-  description     String
-  reference       String?  // Payment reference
-  balanceBefore   Float
-  balanceAfter    Float
-  createdAt       DateTime @default(now())
+  id            String   @id @default(cuid())
+  userId        String
+  amount        Float // Amount in Naira
+  type          String // "credit" or "debit"
+  description   String
+  reference     String? // Payment reference
+  balanceBefore Float
+  balanceAfter  Float
+  createdAt     DateTime @default(now())
 
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([createdAt])
 }
 
 model Withdrawal {
-  id              String   @id @default(cuid())
-  userId          String
-  amount          Float    // Amount requested
-  status          String   @default("pending") // "pending", "processing", "completed", "failed"
-  accountName     String
-  accountNumber   String
-  bankName        String
-  bankCode        String
-  reference       String?  // Paystack transfer reference
-  failureReason   String?
-  requestedAt     DateTime @default(now())
-  processedAt     DateTime?
-  completedAt     DateTime?
+  id            String    @id @default(cuid())
+  userId        String
+  amount        Float // Amount requested
+  status        String    @default("pending") // "pending", "processing", "completed", "failed"
+  accountName   String
+  accountNumber String
+  bankName      String
+  bankCode      String
+  reference     String? // Paystack transfer reference
+  failureReason String?
+  requestedAt   DateTime  @default(now())
+  processedAt   DateTime?
+  completedAt   DateTime?
 
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([status])
@@ -150,4 +160,83 @@ model Profession {
   createdAt DateTime @default(now())
 
   @@index([name])
+}
+
+model Revenue {
+  id           String   @id @default(cuid())
+  amount       Float // Revenue amount in Naira
+  type         String // "payment_fee", "withdrawal_fee", "subscription", "premium_feature"
+  source       String // Description of revenue source
+  userId       String? // User who generated the revenue
+  promiseId    String? // Related promise if applicable
+  withdrawalId String? // Related withdrawal if applicable
+  metadata     Json? // Additional data (plan details, transaction info, etc.)
+  createdAt    DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([type])
+  @@index([createdAt])
+  @@index([userId])
+}
+
+model Subscription {
+  id          String    @id @default(cuid())
+  userId      String
+  plan        String    @default("free") // "free", "basic", "premium"
+  status      String    @default("active") // "active", "cancelled", "expired"
+  amount      Float? // Subscription amount paid
+  startedAt   DateTime  @default(now())
+  expiresAt   DateTime? // For paid subscriptions
+  cancelledAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([plan])
+  @@index([status])
+}
+
+model Referral {
+  id          String   @id @default(cuid())
+  referrerId  String // User who made the referral
+  referredId  String // User who was referred
+  level       Int // 1 = direct, 2 = second level, 3 = third level
+  status      String   @default("active") // "active", "expired"
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  referrer     User @relation("ReferrerReferrals", fields: [referrerId], references: [id], onDelete: Cascade)
+  referredUser User @relation("ReferredUserReferral", fields: [referredId], references: [id], onDelete: Cascade)
+
+  @@unique([referrerId, referredId, level]) // Each user can only be referred once by the same person at the same level
+  @@index([referrerId])
+  @@index([referredId])
+  @@index([level])
+  @@index([status])
+}
+
+model ReferralEarning {
+  id             String   @id @default(cuid())
+  userId         String // User who earned the commission
+  referredUserId String // User who triggered the commission
+  subscriptionId String? // Related subscription if applicable
+  level          Int // 1, 2, or 3
+  plan           String // "basic" or "premium"
+  amount         Float // Commission amount in Naira
+  percentage     Int // Commission percentage (30, 20, or 5)
+  status         String   @default("pending") // "pending", "credited"
+  description    String // e.g., "Level 1: John upgraded to Premium"
+  creditedAt     DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([referredUserId])
+  @@index([status])
+  @@index([createdAt])
 }

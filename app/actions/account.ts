@@ -2,6 +2,70 @@
 
 import { prisma } from '@/lib/db';
 import { getCurrentUser } from './auth';
+import { recordRevenue } from '@/lib/revenue';
+
+export async function getBanks() {
+	try {
+		const response = await fetch('https://api.paystack.co/bank', {
+			headers: {
+				Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
+			},
+		});
+
+		const data = await response.json();
+
+		if (!data.status) {
+			return { error: 'Failed to fetch banks' };
+		}
+
+		return {
+			banks: data.data.map((bank: { name: string; code: string }) => ({
+				name: bank.name,
+				code: bank.code,
+			})),
+		};
+	} catch (error) {
+		console.error('Error fetching banks:', error);
+		return { error: 'Failed to fetch banks' };
+	}
+}
+
+export async function resolveAccountName(
+	accountNumber: string,
+	bankCode: string
+) {
+	if (!accountNumber || !bankCode) {
+		return { error: 'Account number and bank code are required' };
+	}
+
+	if (!/^\d{10}$/.test(accountNumber)) {
+		return { error: 'Account number must be 10 digits' };
+	}
+
+	try {
+		const response = await fetch(
+			`https://api.paystack.co/bank/resolve?account_number=${accountNumber}&bank_code=${bankCode}`,
+			{
+				headers: {
+					Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
+				},
+			}
+		);
+
+		const data = await response.json();
+
+		if (!data.status) {
+			return { error: data.message || 'Failed to resolve account name' };
+		}
+
+		return {
+			accountName: data.data.account_name,
+		};
+	} catch (error) {
+		console.error('Error resolving account:', error);
+		return { error: 'Failed to resolve account name' };
+	}
+}
 
 export async function updateAccountDetails(formData: FormData) {
 	const user = await getCurrentUser();
@@ -16,18 +80,46 @@ export async function updateAccountDetails(formData: FormData) {
 	const bankCode = formData.get('bankCode') as string;
 	const profession = formData.get('profession') as string;
 	const customProfession = formData.get('customProfession') as string;
+	const isResolved = formData.get('isResolved') as string;
 
 	const finalProfession = customProfession || profession;
 
+	// Debug logging
+	console.log('Form data received:', {
+		name,
+		accountName,
+		accountNumber,
+		bankName,
+		bankCode,
+		profession,
+		customProfession,
+		finalProfession,
+		isResolved,
+	});
+
+	// Trim and validate all fields
 	if (
-		!name ||
-		!accountName ||
-		!accountNumber ||
-		!bankName ||
-		!bankCode ||
-		!finalProfession
+		!name?.trim() ||
+		!accountName?.trim() ||
+		!accountNumber?.trim() ||
+		!bankName?.trim() ||
+		!bankCode?.trim() ||
+		!finalProfession?.trim()
 	) {
+		console.log('Validation failed:', {
+			hasName: !!name?.trim(),
+			hasAccountName: !!accountName?.trim(),
+			hasAccountNumber: !!accountNumber?.trim(),
+			hasBankName: !!bankName?.trim(),
+			hasBankCode: !!bankCode?.trim(),
+			hasProfession: !!finalProfession?.trim(),
+		});
 		return { error: 'All fields are required' };
+	}
+
+	// Ensure account was resolved
+	if (isResolved !== 'true') {
+		return { error: 'Please verify your account details first' };
 	}
 
 	// Validate account number
@@ -166,6 +258,21 @@ export async function requestWithdrawal(userId: string, amount: number) {
 			reference: `${withdrawal.id}_fee`,
 			balanceBefore: updatedUser.walletBalance + WITHDRAWAL_FEE,
 			balanceAfter: updatedUser.walletBalance,
+		},
+	});
+
+	// Record withdrawal fee as revenue
+	await recordRevenue({
+		amount: WITHDRAWAL_FEE,
+		type: 'withdrawal_fee',
+		source: `Withdrawal fee for request #${withdrawal.id.slice(-8)}`,
+		userId,
+		withdrawalId: withdrawal.id,
+		metadata: {
+			withdrawalAmount: amount,
+			accountName: user.accountName,
+			accountNumber: user.accountNumber,
+			bankName: user.bankName,
 		},
 	});
 

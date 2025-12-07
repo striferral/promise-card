@@ -3,6 +3,7 @@
 import { prisma } from '@/lib/db';
 import { getCurrentUser } from './auth';
 import { redirect } from 'next/navigation';
+import { canCreateCard, canAddItemToCard } from '@/lib/revenue';
 
 function generateShareCode(): string {
 	const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -17,6 +18,12 @@ export async function createCard(formData: FormData) {
 	const user = await getCurrentUser();
 	if (!user) {
 		return { error: 'You must be signed in' };
+	}
+
+	// Check if user can create more cards
+	const canCreate = await canCreateCard(user.id);
+	if (!canCreate.allowed) {
+		return { error: canCreate.reason };
 	}
 
 	const title = formData.get('title') as string;
@@ -59,6 +66,12 @@ export async function addCardItem(cardId: string, formData: FormData) {
 
 	if (!card || card.userId !== user.id) {
 		return { error: 'Card not found' };
+	}
+
+	// Check if user can add more items to this card
+	const canAdd = await canAddItemToCard(cardId);
+	if (!canAdd.allowed) {
+		return { error: canAdd.reason };
 	}
 
 	const name = formData.get('name') as string;

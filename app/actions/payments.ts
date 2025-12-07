@@ -118,15 +118,82 @@ export async function verifyPayment(reference: string) {
 
 		// Get promise from metadata
 		const promiseId = data.data.metadata.promiseId;
+		const amountInKobo = data.data.amount; // Amount paid in kobo
+		const amountInNaira = amountInKobo / 100;
 
-		// Mark promise as fulfilled
-		await prisma.promise.update({
+		// Calculate service charge (2%)
+		const serviceCharge = amountInNaira * 0.02;
+		const creditAmount = amountInNaira - serviceCharge;
+
+		// Get promise with card owner details
+		const promise = await prisma.promise.findUnique({
 			where: { id: promiseId },
-			data: {
-				fulfilled: true,
-				fulfilledAt: new Date(),
+			include: {
+				item: {
+					include: {
+						card: {
+							include: {
+								user: true,
+							},
+						},
+					},
+				},
 			},
 		});
+
+		if (!promise) {
+			return { error: 'Promise not found' };
+		}
+
+		const cardOwner = promise.item.card.user;
+		const balanceBefore = cardOwner.walletBalance;
+		const balanceAfter = balanceBefore + creditAmount;
+
+		// Mark promise as fulfilled and credit wallet in a transaction
+		await prisma.$transaction([
+			// Update promise
+			prisma.promise.update({
+				where: { id: promiseId },
+				data: {
+					fulfilled: true,
+					fulfilledAt: new Date(),
+				},
+			}),
+			// Credit user wallet
+			prisma.user.update({
+				where: { id: promise.item.card.userId },
+				data: {
+					walletBalance: {
+						increment: creditAmount,
+					},
+				},
+			}),
+			// Create wallet transaction record
+			prisma.walletTransaction.create({
+				data: {
+					userId: promise.item.card.userId,
+					type: 'credit',
+					amount: creditAmount,
+					description: `Payment from ${promise.promiserName} for ${
+						promise.item.name
+					} (₦${amountInNaira.toFixed(2)} - ₦${serviceCharge.toFixed(
+						2
+					)} service charge)`,
+					reference: reference,
+					balanceBefore: balanceBefore,
+					balanceAfter: balanceAfter,
+				},
+			}),
+		]);
+
+		// Send fulfillment notification
+		await sendFulfillmentNotificationEmail(
+			promise.item.card.user.email,
+			promise.promiserName,
+			promise.promiserEmail,
+			promise.item.name,
+			promise.item.card.title
+		);
 
 		return {
 			success: true,

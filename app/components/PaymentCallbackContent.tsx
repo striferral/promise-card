@@ -4,6 +4,14 @@ import { useEffect, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { verifyPayment } from '@/app/actions/payments';
 import Link from 'next/link';
+import {
+	Card,
+	CardContent,
+	CardDescription,
+	CardTitle,
+} from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Loader2, CheckCircle, XCircle, PartyPopper } from 'lucide-react';
 
 export default function PaymentCallbackContent() {
 	const searchParams = useSearchParams();
@@ -40,76 +48,78 @@ export default function PaymentCallbackContent() {
 
 	if (status === 'loading') {
 		return (
-			<div className='bg-white rounded-lg shadow-xl p-8 text-center'>
-				<div className='animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mx-auto'></div>
-				<p className='mt-4 text-gray-600'>Verifying payment...</p>
-			</div>
+			<Card className='border-accent/20'>
+				<CardContent className='text-center py-12'>
+					<Loader2 className='h-12 w-12 mx-auto mb-4 text-primary animate-spin' />
+					<p className='text-muted-foreground'>
+						Verifying payment...
+					</p>
+				</CardContent>
+			</Card>
 		);
 	}
 
 	if (status === 'success') {
 		return (
-			<div className='bg-white rounded-lg shadow-xl p-8 text-center'>
-				<div className='w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4'>
-					<svg
-						className='w-8 h-8 text-green-600'
-						fill='none'
-						stroke='currentColor'
-						viewBox='0 0 24 24'
-					>
-						<path
-							strokeLinecap='round'
-							strokeLinejoin='round'
-							strokeWidth={2}
-							d='M5 13l4 4L19 7'
-						/>
-					</svg>
-				</div>
-				<h1 className='text-2xl font-bold text-gray-900 mb-2'>
-					Payment Successful! 🎉
-				</h1>
-				<p className='text-gray-600 mb-6'>{message}</p>
-				<p className='text-sm text-gray-500 mb-6'>
-					Your promise has been fulfilled. The card creator will be
-					notified.
-				</p>
-				<Link
-					href='/'
-					className='inline-block bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 transition-colors'
-				>
-					Back to Home
-				</Link>
-			</div>
+			<Card className='border-accent/20'>
+				<CardContent className='text-center py-12 space-y-6'>
+					<div className='flex justify-center'>
+						<div className='w-16 h-16 bg-secondary/20 rounded-full flex items-center justify-center'>
+							<CheckCircle className='w-10 h-10 text-secondary' />
+						</div>
+					</div>
+					<div className='space-y-3'>
+						<div className='flex items-center justify-center gap-2'>
+							<CardTitle className='text-2xl font-serif'>
+								Payment Successful!
+							</CardTitle>
+							<PartyPopper className='h-6 w-6 text-accent' />
+						</div>
+						<CardDescription className='text-base'>
+							{message}
+						</CardDescription>
+						<p className='text-sm text-muted-foreground'>
+							Your promise has been fulfilled. The card creator
+							will be notified.
+						</p>
+					</div>
+					<Link href='/'>
+						<Button
+							size='lg'
+							className='bg-gradient-to-r from-primary to-secondary hover:from-primary/90 hover:to-secondary/90'
+						>
+							Back to Home
+						</Button>
+					</Link>
+				</CardContent>
+			</Card>
 		);
 	}
 
 	return (
-		<div className='bg-white rounded-lg shadow-xl p-8 text-center'>
-			<div className='w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4'>
-				<svg
-					className='w-8 h-8 text-red-600'
-					fill='none'
-					stroke='currentColor'
-					viewBox='0 0 24 24'
+		<Card className='border-destructive/50'>
+			<CardContent className='text-center py-12 space-y-6'>
+				<div className='flex justify-center'>
+					<div className='w-16 h-16 bg-destructive/20 rounded-full flex items-center justify-center'>
+						<XCircle className='w-10 h-10 text-destructive' />
+					</div>
+				</div>
+				<div className='space-y-3'>
+					<CardTitle className='text-2xl font-serif text-destructive'>
+						Payment Failed
+					</CardTitle>
+					<CardDescription className='text-base'>
+						{message}
+					</CardDescription>
+				</div>
+				<Button
+					size='lg'
+					onClick={() => router.back()}
+					className='bg-gradient-to-r from-primary to-secondary hover:from-primary/90 hover:to-secondary/90'
 				>
-					<path
-						strokeLinecap='round'
-						strokeLinejoin='round'
-						strokeWidth={2}
-						d='M6 18L18 6M6 6l12 12'
-					/>
-				</svg>
-			</div>
-			<h1 className='text-2xl font-bold text-gray-900 mb-2'>
-				Payment Failed
-			</h1>
-			<p className='text-gray-600 mb-6'>{message}</p>
-			<button
-				onClick={() => router.back()}
-				className='inline-block bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 transition-colors'
-			>
-				Go Back
-			</button>
-		</div>
+					Go Back
+				</Button>
+			</CardContent>
+		</Card>
 	);
 }

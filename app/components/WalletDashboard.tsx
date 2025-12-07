@@ -7,6 +7,27 @@ import {
 	requestWithdrawal,
 	getWithdrawals,
 } from '@/app/actions/account';
+import {
+	Card,
+	CardContent,
+	CardDescription,
+	CardHeader,
+	CardTitle,
+} from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import {
+	Loader2,
+	Wallet as WalletIcon,
+	TrendingUp,
+	TrendingDown,
+	ArrowUpRight,
+	Clock,
+} from 'lucide-react';
+import { toast } from 'sonner';
 
 type Transaction = {
 	id: string;
@@ -32,11 +53,6 @@ export default function WalletDashboard({ userId }: { userId: string }) {
 	const [withdrawals, setWithdrawals] = useState<Withdrawal[]>([]);
 	const [withdrawAmount, setWithdrawAmount] = useState('');
 	const [loading, setLoading] = useState(true);
-	const [error, setError] = useState('');
-	const [success, setSuccess] = useState('');
-	const [activeTab, setActiveTab] = useState<
-		'overview' | 'transactions' | 'withdrawals'
-	>('overview');
 
 	const loadWalletData = async () => {
 		setLoading(true);
@@ -75,20 +91,18 @@ export default function WalletDashboard({ userId }: { userId: string }) {
 
 	const handleWithdrawal = async (e: React.FormEvent) => {
 		e.preventDefault();
-		setError('');
-		setSuccess('');
 
 		const amount = parseFloat(withdrawAmount);
 		if (isNaN(amount) || amount <= 0) {
-			setError('Please enter a valid amount');
+			toast.error('Please enter a valid amount');
 			return;
 		}
 
 		const result = await requestWithdrawal(userId, amount);
 		if (result.error) {
-			setError(result.error);
+			toast.error(result.error);
 		} else {
-			setSuccess('Withdrawal request submitted successfully!');
+			toast.success('Withdrawal request submitted successfully! 🎉');
 			setWithdrawAmount('');
 			loadWalletData();
 		}
@@ -96,284 +110,328 @@ export default function WalletDashboard({ userId }: { userId: string }) {
 
 	if (loading) {
 		return (
-			<div className='flex items-center justify-center p-8'>
-				<div className='animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900'></div>
+			<div className='flex items-center justify-center p-12'>
+				<Loader2 className='h-12 w-12 animate-spin text-white' />
 			</div>
 		);
 	}
 
 	return (
-		<div className='max-w-6xl mx-auto p-6'>
-			<h1 className='text-3xl font-bold mb-6'>My Wallet</h1>
-
+		<div className='container mx-auto px-4 py-8 max-w-6xl'>
 			{/* Balance Card */}
-			<div className='bg-linear-to-r from-blue-500 to-purple-600 rounded-lg p-8 text-white mb-6'>
-				<p className='text-sm opacity-90 mb-2'>Available Balance</p>
-				<p className='text-4xl font-bold'>
-					₦{balance.toLocaleString('en-NG')}
-				</p>
-			</div>
+			<Card className='bg-gradient-to-r from-accent via-primary to-secondary border-0 text-white shadow-2xl mb-8'>
+				<CardContent className='p-8'>
+					<div className='flex items-center gap-3 mb-2'>
+						<WalletIcon className='h-6 w-6' />
+						<p className='text-sm opacity-90 uppercase tracking-wider'>
+							Available Balance
+						</p>
+					</div>
+					<p className='text-5xl font-bold font-serif'>
+						₦{balance.toLocaleString('en-NG')}
+					</p>
+				</CardContent>
+			</Card>
 
 			{/* Tabs */}
-			<div className='border-b border-gray-200 mb-6'>
-				<nav className='flex space-x-8'>
-					<button
-						onClick={() => setActiveTab('overview')}
-						className={`py-4 px-1 border-b-2 font-medium text-sm ${
-							activeTab === 'overview'
-								? 'border-blue-500 text-blue-600'
-								: 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-						}`}
-					>
-						Overview
-					</button>
-					<button
-						onClick={() => setActiveTab('transactions')}
-						className={`py-4 px-1 border-b-2 font-medium text-sm ${
-							activeTab === 'transactions'
-								? 'border-blue-500 text-blue-600'
-								: 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-						}`}
-					>
-						Transactions
-					</button>
-					<button
-						onClick={() => setActiveTab('withdrawals')}
-						className={`py-4 px-1 border-b-2 font-medium text-sm ${
-							activeTab === 'withdrawals'
-								? 'border-blue-500 text-blue-600'
-								: 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-						}`}
-					>
-						Withdrawals
-					</button>
-				</nav>
-			</div>
+			<Tabs
+				defaultValue='overview'
+				className='space-y-6'
+			>
+				<TabsList className='grid w-full grid-cols-3 bg-card'>
+					<TabsTrigger value='overview'>Overview</TabsTrigger>
+					<TabsTrigger value='transactions'>Transactions</TabsTrigger>
+					<TabsTrigger value='withdrawals'>Withdrawals</TabsTrigger>
+				</TabsList>
 
-			{/* Overview Tab */}
-			{activeTab === 'overview' && (
-				<div className='space-y-6'>
+				{/* Overview Tab */}
+				<TabsContent
+					value='overview'
+					className='space-y-6'
+				>
 					{/* Withdraw Form */}
-					<div className='bg-white rounded-lg border p-6'>
-						<h2 className='text-xl font-semibold mb-4'>
-							Request Withdrawal
-						</h2>
-						<p className='text-sm text-gray-600 mb-2'>
-							Minimum withdrawal: ₦2,000
-						</p>
-						<p className='text-sm text-gray-600 mb-4'>
-							Withdrawal fee: ₦100 per transaction
-						</p>
-						<form onSubmit={handleWithdrawal}>
-							<div className='flex gap-4'>
-								<input
+					<Card className='border-accent/20'>
+						<CardHeader>
+							<CardTitle className='font-serif'>
+								Request Withdrawal
+							</CardTitle>
+							<CardDescription>
+								Minimum withdrawal: ₦2,000 • Withdrawal fee:
+								₦100 per transaction
+							</CardDescription>
+						</CardHeader>
+						<CardContent>
+							<form
+								onSubmit={handleWithdrawal}
+								className='flex gap-3'
+							>
+								<Input
 									type='number'
 									value={withdrawAmount}
 									onChange={(e) =>
 										setWithdrawAmount(e.target.value)
 									}
 									placeholder='Enter amount'
-									className='flex-1 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500'
+									className='flex-1'
 									min='2000'
 									step='100'
 								/>
-								<button
+								<Button
 									type='submit'
-									className='px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium'
+									className='bg-gradient-to-r from-primary to-secondary hover:from-primary/90 hover:to-secondary/90'
 								>
+									<ArrowUpRight className='mr-2 h-4 w-4' />
 									Withdraw
-								</button>
-							</div>
-						</form>
-						{error && (
-							<p className='mt-3 text-sm text-red-600'>{error}</p>
-						)}
-						{success && (
-							<p className='mt-3 text-sm text-green-600'>
-								{success}
-							</p>
-						)}
-					</div>
+								</Button>
+							</form>
+						</CardContent>
+					</Card>
 
 					{/* Recent Transactions */}
-					<div className='bg-white rounded-lg border p-6'>
-						<h2 className='text-xl font-semibold mb-4'>
-							Recent Transactions
-						</h2>
-						{transactions.length === 0 ? (
-							<p className='text-gray-500'>No transactions yet</p>
-						) : (
-							<div className='space-y-3'>
-								{transactions.slice(0, 5).map((txn) => (
-									<div
-										key={txn.id}
-										className='flex justify-between items-center py-2 border-b last:border-0'
-									>
-										<div>
-											<p className='font-medium'>
-												{txn.description}
-											</p>
-											<p className='text-xs text-gray-500'>
-												{new Date(
-													txn.createdAt
-												).toLocaleString()}
-											</p>
-										</div>
-										<p
-											className={`font-semibold ${
-												txn.type === 'credit'
-													? 'text-green-600'
-													: 'text-red-600'
-											}`}
-										>
-											{txn.type === 'credit' ? '+' : '-'}₦
-											{Math.abs(
-												txn.amount
-											).toLocaleString('en-NG')}
-										</p>
-									</div>
-								))}
+					<Card className='border-accent/20'>
+						<CardHeader>
+							<CardTitle className='font-serif'>
+								Recent Transactions
+							</CardTitle>
+							<CardDescription>
+								Your latest 5 transactions
+							</CardDescription>
+						</CardHeader>
+						<CardContent>
+							{transactions.length === 0 ? (
+								<p className='text-center text-muted-foreground py-8'>
+									No transactions yet
+								</p>
+							) : (
+								<div className='space-y-3'>
+									{transactions
+										.slice(0, 5)
+										.map((txn, idx) => (
+											<div key={txn.id}>
+												{idx > 0 && <Separator />}
+												<div className='flex justify-between items-center py-3'>
+													<div className='flex items-start gap-3'>
+														{txn.type ===
+														'credit' ? (
+															<div className='h-10 w-10 rounded-full bg-secondary/20 flex items-center justify-center'>
+																<TrendingUp className='h-5 w-5 text-secondary' />
+															</div>
+														) : (
+															<div className='h-10 w-10 rounded-full bg-destructive/20 flex items-center justify-center'>
+																<TrendingDown className='h-5 w-5 text-destructive' />
+															</div>
+														)}
+														<div>
+															<p className='font-medium'>
+																{
+																	txn.description
+																}
+															</p>
+															<p className='text-xs text-muted-foreground'>
+																{new Date(
+																	txn.createdAt
+																).toLocaleString()}
+															</p>
+														</div>
+													</div>
+													<p
+														className={`font-semibold ${
+															txn.type ===
+															'credit'
+																? 'text-secondary'
+																: 'text-destructive'
+														}`}
+													>
+														{txn.type === 'credit'
+															? '+'
+															: '-'}
+														₦
+														{Math.abs(
+															txn.amount
+														).toLocaleString(
+															'en-NG'
+														)}
+													</p>
+												</div>
+											</div>
+										))}
+								</div>
+							)}
+						</CardContent>
+					</Card>
+				</TabsContent>
+
+				{/* Transactions Tab */}
+				<TabsContent value='transactions'>
+					<Card className='border-accent/20'>
+						<CardHeader>
+							<CardTitle className='font-serif'>
+								All Transactions
+							</CardTitle>
+							<CardDescription>
+								Complete transaction history
+							</CardDescription>
+						</CardHeader>
+						<CardContent>
+							<div className='overflow-x-auto'>
+								<table className='w-full'>
+									<thead>
+										<tr className='border-b'>
+											<th className='text-left py-3 px-4 font-medium text-muted-foreground'>
+												Date
+											</th>
+											<th className='text-left py-3 px-4 font-medium text-muted-foreground'>
+												Description
+											</th>
+											<th className='text-left py-3 px-4 font-medium text-muted-foreground'>
+												Type
+											</th>
+											<th className='text-right py-3 px-4 font-medium text-muted-foreground'>
+												Amount
+											</th>
+										</tr>
+									</thead>
+									<tbody>
+										{transactions.map((txn) => (
+											<tr
+												key={txn.id}
+												className='border-b last:border-0'
+											>
+												<td className='py-4 px-4 text-sm text-muted-foreground'>
+													{new Date(
+														txn.createdAt
+													).toLocaleDateString()}
+												</td>
+												<td className='py-4 px-4'>
+													{txn.description}
+												</td>
+												<td className='py-4 px-4'>
+													<Badge
+														variant={
+															txn.type ===
+															'credit'
+																? 'default'
+																: 'destructive'
+														}
+													>
+														{txn.type}
+													</Badge>
+												</td>
+												<td className='py-4 px-4 text-right font-medium'>
+													<span
+														className={
+															txn.type ===
+															'credit'
+																? 'text-secondary'
+																: 'text-destructive'
+														}
+													>
+														{txn.type === 'credit'
+															? '+'
+															: '-'}
+														₦
+														{Math.abs(
+															txn.amount
+														).toLocaleString(
+															'en-NG'
+														)}
+													</span>
+												</td>
+											</tr>
+										))}
+									</tbody>
+								</table>
 							</div>
-						)}
-					</div>
-				</div>
-			)}
+						</CardContent>
+					</Card>
+				</TabsContent>
 
-			{/* Transactions Tab */}
-			{activeTab === 'transactions' && (
-				<div className='bg-white rounded-lg border'>
-					<div className='overflow-x-auto'>
-						<table className='min-w-full divide-y divide-gray-200'>
-							<thead className='bg-gray-50'>
-								<tr>
-									<th className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase'>
-										Date
-									</th>
-									<th className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase'>
-										Description
-									</th>
-									<th className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase'>
-										Type
-									</th>
-									<th className='px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase'>
-										Amount
-									</th>
-								</tr>
-							</thead>
-							<tbody className='bg-white divide-y divide-gray-200'>
-								{transactions.map((txn) => (
-									<tr key={txn.id}>
-										<td className='px-6 py-4 whitespace-nowrap text-sm text-gray-500'>
-											{new Date(
-												txn.createdAt
-											).toLocaleDateString()}
-										</td>
-										<td className='px-6 py-4 text-sm text-gray-900'>
-											{txn.description}
-										</td>
-										<td className='px-6 py-4 whitespace-nowrap'>
-											<span
-												className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-													txn.type === 'credit'
-														? 'bg-green-100 text-green-800'
-														: 'bg-red-100 text-red-800'
-												}`}
+				{/* Withdrawals Tab */}
+				<TabsContent value='withdrawals'>
+					<Card className='border-accent/20'>
+						<CardHeader>
+							<CardTitle className='font-serif'>
+								Withdrawal Requests
+							</CardTitle>
+							<CardDescription>
+								Track your withdrawal history
+							</CardDescription>
+						</CardHeader>
+						<CardContent>
+							<div className='overflow-x-auto'>
+								<table className='w-full'>
+									<thead>
+										<tr className='border-b'>
+											<th className='text-left py-3 px-4 font-medium text-muted-foreground'>
+												Date Requested
+											</th>
+											<th className='text-left py-3 px-4 font-medium text-muted-foreground'>
+												Amount
+											</th>
+											<th className='text-left py-3 px-4 font-medium text-muted-foreground'>
+												Status
+											</th>
+											<th className='text-left py-3 px-4 font-medium text-muted-foreground'>
+												Completed
+											</th>
+										</tr>
+									</thead>
+									<tbody>
+										{withdrawals.map((withdrawal) => (
+											<tr
+												key={withdrawal.id}
+												className='border-b last:border-0'
 											>
-												{txn.type}
-											</span>
-										</td>
-										<td className='px-6 py-4 whitespace-nowrap text-sm text-right font-medium'>
-											<span
-												className={
-													txn.type === 'credit'
-														? 'text-green-600'
-														: 'text-red-600'
-												}
-											>
-												{txn.type === 'credit'
-													? '+'
-													: '-'}
-												₦
-												{Math.abs(
-													txn.amount
-												).toLocaleString('en-NG')}
-											</span>
-										</td>
-									</tr>
-								))}
-							</tbody>
-						</table>
-					</div>
-				</div>
-			)}
-
-			{/* Withdrawals Tab */}
-			{activeTab === 'withdrawals' && (
-				<div className='bg-white rounded-lg border'>
-					<div className='overflow-x-auto'>
-						<table className='min-w-full divide-y divide-gray-200'>
-							<thead className='bg-gray-50'>
-								<tr>
-									<th className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase'>
-										Date Requested
-									</th>
-									<th className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase'>
-										Amount
-									</th>
-									<th className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase'>
-										Status
-									</th>
-									<th className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase'>
-										Completed
-									</th>
-								</tr>
-							</thead>
-							<tbody className='bg-white divide-y divide-gray-200'>
-								{withdrawals.map((withdrawal) => (
-									<tr key={withdrawal.id}>
-										<td className='px-6 py-4 whitespace-nowrap text-sm text-gray-500'>
-											{new Date(
-												withdrawal.requestedAt
-											).toLocaleDateString()}
-										</td>
-										<td className='px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900'>
-											₦
-											{withdrawal.amount.toLocaleString(
-												'en-NG'
-											)}
-										</td>
-										<td className='px-6 py-4 whitespace-nowrap'>
-											<span
-												className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-													withdrawal.status ===
-													'completed'
-														? 'bg-green-100 text-green-800'
-														: withdrawal.status ===
-														  'failed'
-														? 'bg-red-100 text-red-800'
-														: withdrawal.status ===
-														  'processing'
-														? 'bg-blue-100 text-blue-800'
-														: 'bg-yellow-100 text-yellow-800'
-												}`}
-											>
-												{withdrawal.status}
-											</span>
-										</td>
-										<td className='px-6 py-4 whitespace-nowrap text-sm text-gray-500'>
-											{withdrawal.completedAt
-												? new Date(
-														withdrawal.completedAt
-												  ).toLocaleDateString()
-												: '-'}
-										</td>
-									</tr>
-								))}
-							</tbody>
-						</table>
-					</div>
-				</div>
-			)}
+												<td className='py-4 px-4 text-sm text-muted-foreground'>
+													{new Date(
+														withdrawal.requestedAt
+													).toLocaleDateString()}
+												</td>
+												<td className='py-4 px-4 font-medium'>
+													₦
+													{withdrawal.amount.toLocaleString(
+														'en-NG'
+													)}
+												</td>
+												<td className='py-4 px-4'>
+													<Badge
+														variant={
+															withdrawal.status ===
+															'completed'
+																? 'default'
+																: withdrawal.status ===
+																  'failed'
+																? 'destructive'
+																: withdrawal.status ===
+																  'processing'
+																? 'secondary'
+																: 'outline'
+														}
+													>
+														{withdrawal.status}
+													</Badge>
+												</td>
+												<td className='py-4 px-4 text-sm text-muted-foreground'>
+													{withdrawal.completedAt ? (
+														new Date(
+															withdrawal.completedAt
+														).toLocaleDateString()
+													) : (
+														<span className='flex items-center gap-1'>
+															<Clock className='h-3 w-3' />
+															Pending
+														</span>
+													)}
+												</td>
+											</tr>
+										))}
+									</tbody>
+								</table>
+							</div>
+						</CardContent>
+					</Card>
+				</TabsContent>
+			</Tabs>
 		</div>
 	);
 }

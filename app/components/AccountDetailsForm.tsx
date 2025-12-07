@@ -1,7 +1,42 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { updateAccountDetails, getProfessions } from '@/app/actions/account';
+import { useState, useEffect, useRef } from 'react';
+import {
+	updateAccountDetails,
+	getProfessions,
+	getBanks,
+	resolveAccountName,
+} from '@/app/actions/account';
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogHeader,
+	DialogTitle,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from '@/components/ui/select';
+import {
+	Loader2,
+	CheckCircle,
+	Building2,
+	CreditCard,
+	Briefcase,
+} from 'lucide-react';
+import { toast } from 'sonner';
+
+type Bank = {
+	name: string;
+	code: string;
+};
 
 export default function AccountDetailsForm({
 	onClose,
@@ -12,6 +47,31 @@ export default function AccountDetailsForm({
 	const [error, setError] = useState('');
 	const [professions, setProfessions] = useState<string[]>([]);
 	const [showCustomProfession, setShowCustomProfession] = useState(false);
+	const [banks, setBanks] = useState<Bank[]>([]);
+	const [selectedBank, setSelectedBank] = useState<Bank | null>(null);
+	const [accountNumber, setAccountNumber] = useState('');
+	const [resolvedAccountName, setResolvedAccountName] = useState('');
+	const [isResolving, setIsResolving] = useState(false);
+	const [isResolved, setIsResolved] = useState(false);
+	const [searchQuery, setSearchQuery] = useState('');
+	const [showBankDropdown, setShowBankDropdown] = useState(false);
+	const bankDropdownRef = useRef<HTMLDivElement>(null);
+
+	useEffect(() => {
+		function handleClickOutside(event: MouseEvent) {
+			if (
+				bankDropdownRef.current &&
+				!bankDropdownRef.current.contains(event.target as Node)
+			) {
+				setShowBankDropdown(false);
+			}
+		}
+
+		document.addEventListener('mousedown', handleClickOutside);
+		return () => {
+			document.removeEventListener('mousedown', handleClickOutside);
+		};
+	}, []);
 
 	useEffect(() => {
 		getProfessions().then((result) => {
@@ -19,162 +79,277 @@ export default function AccountDetailsForm({
 				setProfessions(result.professions);
 			}
 		});
+		getBanks().then((result) => {
+			if (result.banks) {
+				setBanks(result.banks);
+			}
+		});
 	}, []);
 
-	async function handleSubmit(formData: FormData) {
-		setIsLoading(true);
+	// Auto-resolve account when both bank and account number are available
+	useEffect(() => {
+		if (selectedBank && accountNumber.length === 10) {
+			handleResolveAccount();
+		} else {
+			setResolvedAccountName('');
+			setIsResolved(false);
+		}
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [selectedBank, accountNumber]);
+
+	async function handleResolveAccount() {
+		if (!selectedBank || !accountNumber) return;
+
+		setIsResolving(true);
 		setError('');
 
-		const result = await updateAccountDetails(formData);
+		const result = await resolveAccountName(
+			accountNumber,
+			selectedBank.code
+		);
+
+		setIsResolving(false);
 
 		if (result.error) {
 			setError(result.error);
+			setResolvedAccountName('');
+			setIsResolved(false);
+		} else if (result.accountName) {
+			setResolvedAccountName(result.accountName);
+			setIsResolved(true);
+			setError('');
+		}
+	}
+
+	const filteredBanks = banks.filter((bank) =>
+		bank.name.toLowerCase().includes(searchQuery.toLowerCase())
+	);
+
+	async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+		e.preventDefault();
+
+		if (!isResolved) {
+			toast.error('Please wait for account verification to complete');
+			return;
+		}
+
+		setIsLoading(true);
+		setError('');
+
+		const formData = new FormData(e.currentTarget);
+		const result = await updateAccountDetails(formData);
+
+		if (result.error) {
+			toast.error(result.error);
 			setIsLoading(false);
 		} else {
+			toast.success('Account details saved successfully! 🎉');
 			onClose();
 		}
 	}
 
 	return (
-		<div className='fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50'>
-			<div className='bg-white rounded-2xl shadow-2xl p-8 border-4 border-red-600 max-w-md w-full'>
-				<div className='text-center mb-6'>
-					<h2 className='text-2xl font-bold text-green-800 mb-2'>
-						🏦 Complete Your Profile
-					</h2>
-					<p className='text-gray-600 text-sm'>
+		<Dialog
+			open={true}
+			onOpenChange={(open) => !open && onClose()}
+		>
+			<DialogContent className='max-w-md max-h-[90vh] overflow-y-auto'>
+				<DialogHeader>
+					<div className='flex justify-center mb-2'>
+						<div className='h-12 w-12 rounded-full bg-accent/20 flex items-center justify-center'>
+							<Building2 className='h-6 w-6 text-accent' />
+						</div>
+					</div>
+					<DialogTitle className='text-2xl font-serif text-center'>
+						Complete Your Profile
+					</DialogTitle>
+					<DialogDescription className='text-center'>
 						Add your bank details to receive payments from your
 						Christmas promises
-					</p>
-				</div>
+					</DialogDescription>
+				</DialogHeader>
 
 				<form
-					action={handleSubmit}
+					onSubmit={handleSubmit}
 					className='space-y-4'
 				>
-					<div>
-						<label className='block text-sm font-medium text-gray-700 mb-2'>
-							Your Name *
-						</label>
-						<input
-							type='text'
+					<div className='space-y-2'>
+						<Label htmlFor='name'>Your Name *</Label>
+						<Input
+							id='name'
 							name='name'
+							type='text'
 							required
-							className='w-full px-3 py-2 border-2 border-green-600 rounded-lg text-gray-900'
 							placeholder='John Doe'
 							disabled={isLoading}
 						/>
 					</div>
 
-					<div>
-						<label className='block text-sm font-medium text-gray-700 mb-2'>
-							Account Name *
-						</label>
-						<input
-							type='text'
+					<div className='space-y-2'>
+						<Label htmlFor='bank'>Bank *</Label>
+						<div
+							className='relative'
+							ref={bankDropdownRef}
+						>
+							<Input
+								id='bank'
+								type='text'
+								value={
+									selectedBank
+										? selectedBank.name
+										: searchQuery
+								}
+								onChange={(e) => {
+									setSearchQuery(e.target.value);
+									setShowBankDropdown(true);
+									setSelectedBank(null);
+								}}
+								onFocus={() => setShowBankDropdown(true)}
+								placeholder='Search for your bank...'
+								disabled={isLoading}
+								autoComplete='off'
+								className='pr-10'
+							/>
+							<Building2 className='absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground' />
+							{showBankDropdown && filteredBanks.length > 0 && (
+								<div className='absolute z-10 w-full mt-1 bg-popover border border-border rounded-md shadow-lg max-h-60 overflow-y-auto'>
+									{filteredBanks.map((bank) => (
+										<button
+											key={bank.code}
+											type='button'
+											onClick={() => {
+												setSelectedBank(bank);
+												setSearchQuery('');
+												setShowBankDropdown(false);
+											}}
+											className='w-full text-left px-3 py-2 hover:bg-accent hover:text-accent-foreground transition-colors'
+										>
+											{bank.name}
+										</button>
+									))}
+								</div>
+							)}
+						</div>
+						{selectedBank && (
+							<>
+								<input
+									type='hidden'
+									name='bankName'
+									value={selectedBank.name}
+								/>
+								<input
+									type='hidden'
+									name='bankCode'
+									value={selectedBank.code}
+								/>
+							</>
+						)}
+					</div>
+
+					<div className='space-y-2'>
+						<Label htmlFor='accountNumber'>Account Number *</Label>
+						<div className='relative'>
+							<Input
+								id='accountNumber'
+								name='accountNumber'
+								type='text'
+								value={accountNumber}
+								onChange={(e) => {
+									const value = e.target.value.replace(
+										/\D/g,
+										''
+									);
+									if (value.length <= 10) {
+										setAccountNumber(value);
+									}
+								}}
+								required
+								maxLength={10}
+								placeholder='0123456789'
+								disabled={isLoading}
+								className='pr-10'
+							/>
+							<CreditCard className='absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground' />
+						</div>
+						{isResolving && (
+							<p className='text-xs text-primary flex items-center gap-2'>
+								<Loader2 className='h-3 w-3 animate-spin' />
+								Verifying account...
+							</p>
+						)}
+					</div>
+
+					<div className='space-y-2'>
+						<Label htmlFor='accountName'>Account Name</Label>
+						<Input
+							id='accountName'
 							name='accountName'
-							required
-							className='w-full px-3 py-2 border-2 border-green-600 rounded-lg text-gray-900'
-							placeholder='John Doe'
-							disabled={isLoading}
-						/>
-					</div>
-
-					<div>
-						<label className='block text-sm font-medium text-gray-700 mb-2'>
-							Account Number *
-						</label>
-						<input
 							type='text'
-							name='accountNumber'
+							value={resolvedAccountName}
+							readOnly
 							required
-							maxLength={10}
-							className='w-full px-3 py-2 border-2 border-green-600 rounded-lg text-gray-900'
-							placeholder='0123456789'
-							disabled={isLoading}
+							placeholder='Will be auto-filled after verification'
+							className='bg-muted'
 						/>
-					</div>
-
-					<div>
-						<label className='block text-sm font-medium text-gray-700 mb-2'>
-							Bank Name *
-						</label>
 						<input
-							type='text'
-							name='bankName'
-							required
-							className='w-full px-3 py-2 border-2 border-green-600 rounded-lg text-gray-900'
-							placeholder='Access Bank'
-							disabled={isLoading}
+							type='hidden'
+							name='isResolved'
+							value={isResolved ? 'true' : 'false'}
 						/>
+						{isResolved && (
+							<p className='text-xs text-secondary flex items-center gap-1'>
+								<CheckCircle className='h-3 w-3' />
+								Account verified
+							</p>
+						)}
 					</div>
 
-					<div>
-						<label className='block text-sm font-medium text-gray-700 mb-2'>
-							Bank Code *
-						</label>
-						<input
-							type='text'
-							name='bankCode'
-							required
-							className='w-full px-3 py-2 border-2 border-green-600 rounded-lg text-gray-900'
-							placeholder='044'
-							disabled={isLoading}
-						/>
-						<p className='text-xs text-gray-500 mt-1'>
-							Find your bank code{' '}
-							<a
-								href='https://paystack.com/docs/api/miscellaneous/#bank'
-								target='_blank'
-								rel='noopener noreferrer'
-								className='text-green-600 hover:underline'
-							>
-								here
-							</a>
-						</p>
-					</div>
-
-					<div>
-						<label className='block text-sm font-medium text-gray-700 mb-2'>
-							Profession *
-						</label>
+					<div className='space-y-2'>
+						<Label htmlFor='profession'>Profession *</Label>
 						{!showCustomProfession ? (
 							<div className='space-y-2'>
-								<select
-									name='profession'
-									title='Select your profession'
-									required={!showCustomProfession}
-									className='w-full px-3 py-2 border-2 border-green-600 rounded-lg text-gray-900'
-									disabled={isLoading}
-									onChange={(e) => {
-										if (e.target.value === '__custom__') {
-											setShowCustomProfession(true);
-										}
-									}}
-								>
-									<option value=''>
-										Select your profession
-									</option>
-									{professions.map((prof) => (
-										<option
-											key={prof}
-											value={prof}
-										>
-											{prof}
-										</option>
-									))}
-									<option value='__custom__'>
-										➕ Add custom profession
-									</option>
-								</select>
+								<div className='relative'>
+									<Select
+										name='profession'
+										required={!showCustomProfession}
+										disabled={isLoading}
+										onValueChange={(value) => {
+											if (value === '__custom__') {
+												setShowCustomProfession(true);
+											}
+										}}
+									>
+										<SelectTrigger className='pr-10'>
+											<SelectValue placeholder='Select your profession' />
+										</SelectTrigger>
+										<SelectContent>
+											{professions.map((prof) => (
+												<SelectItem
+													key={prof}
+													value={prof}
+												>
+													{prof}
+												</SelectItem>
+											))}
+											<SelectItem value='__custom__'>
+												➕ Add custom profession
+											</SelectItem>
+										</SelectContent>
+									</Select>
+									<Briefcase className='absolute right-10 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none' />
+								</div>
 							</div>
 						) : (
 							<div className='space-y-2'>
 								<input
-									type='text'
+									type='hidden'
+									name='profession'
+									value=''
+								/>
+								<Input
 									name='customProfession'
+									type='text'
 									required={showCustomProfession}
-									className='w-full px-3 py-2 border-2 border-green-600 rounded-lg text-gray-900'
 									placeholder='Enter your profession'
 									disabled={isLoading}
 								/>
@@ -183,7 +358,7 @@ export default function AccountDetailsForm({
 									onClick={() =>
 										setShowCustomProfession(false)
 									}
-									className='text-sm text-green-600 hover:underline'
+									className='text-sm text-primary hover:underline'
 								>
 									← Back to dropdown
 								</button>
@@ -191,25 +366,35 @@ export default function AccountDetailsForm({
 						)}
 					</div>
 
-					{error && (
-						<div className='p-3 bg-red-100 text-red-800 rounded-lg border-2 border-red-600 text-sm'>
-							{error}
-						</div>
-					)}
-
-					<button
+					<Button
 						type='submit'
-						disabled={isLoading}
-						className='w-full bg-linear-to-r from-red-600 to-green-700 text-white font-bold py-3 rounded-lg hover:from-red-700 hover:to-green-800 disabled:opacity-50'
+						disabled={isLoading || !isResolved}
+						className='w-full bg-gradient-to-r from-primary to-secondary hover:from-primary/90 hover:to-secondary/90'
+						size='lg'
 					>
-						{isLoading ? 'Saving...' : '💾 Save Account Details'}
-					</button>
+						{isLoading ? (
+							<>
+								<Loader2 className='mr-2 h-5 w-5 animate-spin' />
+								Saving...
+							</>
+						) : isResolved ? (
+							<>
+								<CheckCircle className='mr-2 h-5 w-5' />
+								Save Account Details
+							</>
+						) : (
+							<>
+								<Loader2 className='mr-2 h-5 w-5' />
+								Waiting for verification...
+							</>
+						)}
+					</Button>
 
-					<p className='text-xs text-gray-500 text-center'>
+					<p className='text-xs text-muted-foreground text-center'>
 						You can update these details later from your dashboard
 					</p>
 				</form>
-			</div>
-		</div>
+			</DialogContent>
+		</Dialog>
 	);
 }

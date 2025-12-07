@@ -4,6 +4,15 @@ import { verifyMagicToken } from '@/app/actions/auth';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import {
+	Card,
+	CardContent,
+	CardDescription,
+	CardHeader,
+	CardTitle,
+} from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Loader2, XCircle, Gift } from 'lucide-react';
 
 export function VerifyForm({ token }: { token: string }) {
 	const router = useRouter();
@@ -34,36 +43,55 @@ export function VerifyForm({ token }: { token: string }) {
 
 	if (isVerifying) {
 		return (
-			<div className='min-h-screen bg-linear-to-br from-red-700 via-green-800 to-red-900 flex items-center justify-center p-4'>
-				<div className='bg-white rounded-2xl shadow-2xl p-8 border-4 border-green-600 max-w-md w-full text-center'>
-					<div className='text-6xl mb-4 animate-bounce'>🎄</div>
-					<h1 className='text-2xl font-bold text-green-800 mb-4'>
-						Verifying your magic link...
-					</h1>
-					<div className='flex justify-center'>
-						<div className='animate-spin rounded-full h-12 w-12 border-b-2 border-green-800'></div>
-					</div>
-				</div>
+			<div className='min-h-screen bg-gradient-to-br from-primary via-secondary to-primary flex items-center justify-center p-4'>
+				<Card className='max-w-md w-full border-accent/20 shadow-2xl'>
+					<CardHeader className='text-center space-y-4'>
+						<div className='text-6xl animate-bounce mx-auto'>
+							🎄
+						</div>
+						<CardTitle className='text-2xl font-serif'>
+							Verifying Your Magic Link
+						</CardTitle>
+						<CardDescription className='text-base'>
+							Please wait while we verify your credentials...
+						</CardDescription>
+					</CardHeader>
+					<CardContent className='flex justify-center pb-8'>
+						<Loader2 className='h-12 w-12 animate-spin text-primary' />
+					</CardContent>
+				</Card>
 			</div>
 		);
 	}
 
 	if (error) {
 		return (
-			<div className='min-h-screen bg-linear-to-br from-red-700 via-green-800 to-red-900 flex items-center justify-center p-4'>
-				<div className='bg-white rounded-2xl shadow-2xl p-8 border-4 border-red-600 max-w-md w-full text-center'>
-					<div className='text-6xl mb-4'>❌</div>
-					<h1 className='text-2xl font-bold text-red-800 mb-4'>
-						Oops!
-					</h1>
-					<p className='text-gray-700 mb-6'>{error}</p>
-					<Link
-						href='/'
-						className='inline-block bg-linear-to-r from-red-600 to-green-700 text-white font-bold py-3 px-6 rounded-lg hover:from-red-700 hover:to-green-800 transition-all'
-					>
-						Go Home
-					</Link>
-				</div>
+			<div className='min-h-screen bg-gradient-to-br from-primary via-secondary to-primary flex items-center justify-center p-4'>
+				<Card className='max-w-md w-full border-destructive/20 shadow-2xl'>
+					<CardHeader className='text-center space-y-4'>
+						<div className='mx-auto'>
+							<XCircle className='h-16 w-16 text-destructive' />
+						</div>
+						<CardTitle className='text-2xl font-serif text-destructive'>
+							Verification Failed
+						</CardTitle>
+						<CardDescription className='text-base'>
+							{error}
+						</CardDescription>
+					</CardHeader>
+					<CardContent className='flex justify-center pb-6'>
+						<Button
+							asChild
+							size='lg'
+							className='bg-gradient-to-r from-primary to-secondary hover:from-primary/90 hover:to-secondary/90'
+						>
+							<Link href='/'>
+								<Gift className='mr-2 h-5 w-5' />
+								Go Home
+							</Link>
+						</Button>
+					</CardContent>
+				</Card>
 			</div>
 		);
 	}
