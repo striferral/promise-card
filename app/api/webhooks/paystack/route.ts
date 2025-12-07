@@ -38,13 +38,19 @@ export async function POST(req: NextRequest) {
 
 			// Check if this is a subscription payment
 			if (metadata.type === 'subscription') {
-				const { userId, plan } = metadata;
+				const { userId, plan, desiredAmount, paystackFees } = metadata;
+				const amountPaid = amount / 100; // Convert from kobo to naira
 
 				// Upgrade the subscription
 				const result = await upgradeSubscription(
 					userId,
 					plan,
-					reference
+					reference,
+					{
+						amountPaid,
+						desiredAmount,
+						paystackFees,
+					}
 				);
 
 				if (result.error) {
@@ -91,15 +97,22 @@ export async function POST(req: NextRequest) {
 
 			// Credit card owner's wallet with 2% service charge deducted
 			const cardOwner = promise.item.card.user;
-			const amountInNaira = amount / 100; // Convert from kobo to naira
-			const serviceCharge = amountInNaira * 0.02; // 2% service charge
-			const amountAfterCharge = amountInNaira - serviceCharge; // Amount creator receives
+			const amountPaidInKobo = amount; // Total amount paid by customer
+			const amountPaidInNaira = amountPaidInKobo / 100; // Convert from kobo to naira
+
+			// Get the desired amount from metadata (what card owner wants to receive)
+			const desiredAmount = metadata.desiredAmount || amountPaidInNaira;
+			const paystackFees = metadata.paystackFees || 0;
+
+			// Calculate platform's 2% service charge on desired amount
+			const platformServiceCharge = desiredAmount * 0.02;
+			const finalCreditAmount = desiredAmount - platformServiceCharge;
 
 			const updatedUser = await prisma.user.update({
 				where: { id: cardOwner.id },
 				data: {
 					walletBalance: {
-						increment: amountAfterCharge,
+						increment: finalCreditAmount,
 					},
 				},
 			});
@@ -108,31 +121,38 @@ export async function POST(req: NextRequest) {
 			await prisma.walletTransaction.create({
 				data: {
 					userId: cardOwner.id,
-					amount: amountAfterCharge,
+					amount: finalCreditAmount,
 					type: 'credit',
 					description: `Payment for ${promise.item.name} from ${
 						promise.promiserName
-					} (₦${amountInNaira.toFixed(2)} - ₦${serviceCharge.toFixed(
+					} (Paid: ₦${amountPaidInNaira.toFixed(
 						2
-					)} service charge)`,
+					)}, Desired: ₦${desiredAmount.toFixed(
+						2
+					)}, Paystack fees: ₦${paystackFees.toFixed(
+						2
+					)}, Platform fee: ₦${platformServiceCharge.toFixed(2)})`,
 					reference: reference,
 					balanceBefore:
-						updatedUser.walletBalance - amountAfterCharge,
+						updatedUser.walletBalance - finalCreditAmount,
 					balanceAfter: updatedUser.walletBalance,
 				},
 			});
 
 			// Record revenue from service charge
 			await recordRevenue({
-				amount: serviceCharge,
+				amount: platformServiceCharge,
 				type: 'payment_fee',
 				source: `Payment service charge for ${promise.item.name}`,
 				userId: cardOwner.id,
 				promiseId: promiseId,
 				metadata: {
 					reference,
-					grossAmount: amountInNaira,
-					netAmount: amountAfterCharge,
+					amountPaid: amountPaidInNaira,
+					desiredAmount,
+					paystackFees,
+					platformFee: platformServiceCharge,
+					netAmount: finalCreditAmount,
 					promiserName: promise.promiserName,
 					promiserEmail: promise.promiserEmail,
 					itemName: promise.item.name,

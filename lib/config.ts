@@ -6,7 +6,7 @@ export const REVENUE_CONFIG = {
 	PAYMENT_SERVICE_CHARGE: 0.02, // 2% on payments
 	WITHDRAWAL_FEE: 100, // ₦100 per withdrawal
 	WITHDRAWAL_LIMITS: {
-		MIN: 1000, // ₦1,000 minimum withdrawal
+		MIN: 500, // ₦500 minimum withdrawal
 		free: 5000, // ₦5,000 max for free tier
 		basic: 20000, // ₦20,000 max for basic tier
 		premium: 50000, // ₦50,000 max for premium tier

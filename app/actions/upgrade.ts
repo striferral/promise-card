@@ -3,6 +3,7 @@
 import { redirect } from 'next/navigation';
 import { getCurrentUser } from '@/app/actions/auth';
 import { REVENUE_CONFIG } from '@/lib/revenue';
+import { calculateChargeAmountInKobo } from '@/lib/paystack-fees';
 
 export async function initiateUpgrade(formData: FormData) {
 	const user = await getCurrentUser();
@@ -17,7 +18,10 @@ export async function initiateUpgrade(formData: FormData) {
 	}
 
 	const planConfig = REVENUE_CONFIG.SUBSCRIPTION_PLANS[plan];
-	const amount = planConfig.price * 100; // Convert to kobo
+	const desiredAmount = planConfig.price; // Amount platform wants to receive in Naira
+
+	// Calculate charge amount including Paystack fees (user pays the fees)
+	const feeCalculation = calculateChargeAmountInKobo(desiredAmount);
 
 	try {
 		// Initialize Paystack transaction
@@ -31,11 +35,15 @@ export async function initiateUpgrade(formData: FormData) {
 				},
 				body: JSON.stringify({
 					email: user.email,
-					amount,
+					amount: feeCalculation.chargeAmountInKobo, // Charge customer the amount including fees
 					metadata: {
 						userId: user.id,
 						plan,
 						type: 'subscription',
+						desiredAmount, // What platform expects to receive
+						chargeAmount: feeCalculation.chargeAmount,
+						paystackFees: feeCalculation.paystackFees,
+						feesPassed: true,
 					},
 					callback_url: `${process.env.NEXT_PUBLIC_APP_URL}/pricing/verify`,
 				}),
@@ -86,9 +94,12 @@ export async function verifySubscriptionPayment(reference: string) {
 			return { error: 'Payment verification failed' };
 		}
 
-		// Extract plan from metadata
+		// Extract plan and fee information from metadata
 		const plan = data.data.metadata.plan as 'basic' | 'premium';
 		const userId = data.data.metadata.userId;
+		const desiredAmount = data.data.metadata.desiredAmount;
+		const paystackFees = data.data.metadata.paystackFees;
+		const amountPaid = data.data.amount / 100; // Convert from kobo to naira
 
 		// Verify it's the correct user
 		if (userId !== user.id) {
@@ -98,6 +109,9 @@ export async function verifySubscriptionPayment(reference: string) {
 		return {
 			success: true,
 			plan,
+			amountPaid,
+			desiredAmount,
+			paystackFees,
 			userId,
 			reference,
 			amount: data.data.amount / 100, // Convert from kobo to naira

@@ -2,6 +2,7 @@
 
 import { prisma } from '@/lib/db';
 import { sendFulfillmentNotificationEmail } from '@/lib/email';
+import { calculateChargeAmountInKobo } from '@/lib/paystack-fees';
 
 export async function initializePayment(promiseId: string) {
 	const promise = await prisma.promise.findUnique({
@@ -40,13 +41,18 @@ export async function initializePayment(promiseId: string) {
 		// Extract amount from item description (should be a number)
 		// For cash items, description should contain the amount
 		const amountStr = promise.item.name || '0';
-		const amount = parseFloat(amountStr.replace(/[^0-9.]/g, '')); // Remove non-numeric characters
+		const desiredAmount = parseFloat(amountStr.replace(/[^0-9.]/g, '')); // Remove non-numeric characters
 
-		if (amount <= 0) {
+		if (desiredAmount <= 0) {
 			return {
 				error: 'Invalid amount. Please contact the card creator.',
 			};
 		}
+
+		// Calculate charge amount with fees passed to customer
+		// This ensures the card owner receives the full desired amount
+		const { amountInKobo, amountInNaira, feeCalculation } =
+			calculateChargeAmountInKobo(desiredAmount, 'local');
 
 		const response = await fetch(
 			'https://api.paystack.co/transaction/initialize',
@@ -58,9 +64,8 @@ export async function initializePayment(promiseId: string) {
 				},
 				body: JSON.stringify({
 					email: promise.promiserEmail, // Charge the promiser, not card owner
-					amount: Math.round(amount * 100), // Amount in kobo
+					amount: amountInKobo, // Amount in kobo (including fees)
 					reference: `promise_${promiseId}_${Date.now()}`,
-					bearer: 'account', // Payer bears all charges
 					metadata: {
 						promiseId,
 						promiserName: promise.promiserName,
@@ -68,6 +73,10 @@ export async function initializePayment(promiseId: string) {
 						itemName: promise.item.name,
 						cardTitle: promise.item.card.title,
 						cardOwnerEmail: promise.item.card.user.email,
+						desiredAmount, // Original amount card owner wants
+						chargeAmount: amountInNaira, // Amount charged to customer
+						paystackFees: feeCalculation.totalFees, // Fees being passed
+						feesPassed: true,
 					},
 					callback_url: `${process.env.NEXT_PUBLIC_APP_URL}/payment/callback`,
 				}),
@@ -118,12 +127,21 @@ export async function verifyPayment(reference: string) {
 
 		// Get promise from metadata
 		const promiseId = data.data.metadata.promiseId;
-		const amountInKobo = data.data.amount; // Amount paid in kobo
-		const amountInNaira = amountInKobo / 100;
+		const amountPaidInKobo = data.data.amount; // Total amount paid by customer in kobo
+		const amountPaidInNaira = amountPaidInKobo / 100;
 
-		// Calculate service charge (2%)
-		const serviceCharge = amountInNaira * 0.02;
-		const creditAmount = amountInNaira - serviceCharge;
+		// Get the desired amount (what card owner wants to receive)
+		const desiredAmount =
+			data.data.metadata.desiredAmount || amountPaidInNaira;
+		const paystackFees = data.data.metadata.paystackFees || 0;
+
+		// The card owner should receive the full desired amount
+		// since fees were passed to the customer
+		const creditAmount = desiredAmount;
+
+		// Calculate our platform's 2% service charge on the desired amount
+		const platformServiceCharge = desiredAmount * 0.02;
+		const finalCreditAmount = creditAmount - platformServiceCharge;
 
 		// Get promise with card owner details
 		const promise = await prisma.promise.findUnique({
@@ -147,7 +165,7 @@ export async function verifyPayment(reference: string) {
 
 		const cardOwner = promise.item.card.user;
 		const balanceBefore = cardOwner.walletBalance;
-		const balanceAfter = balanceBefore + creditAmount;
+		const balanceAfter = balanceBefore + finalCreditAmount;
 
 		// Mark promise as fulfilled and credit wallet in a transaction
 		await prisma.$transaction([
@@ -164,7 +182,7 @@ export async function verifyPayment(reference: string) {
 				where: { id: promise.item.card.userId },
 				data: {
 					walletBalance: {
-						increment: creditAmount,
+						increment: finalCreditAmount,
 					},
 				},
 			}),
@@ -173,12 +191,16 @@ export async function verifyPayment(reference: string) {
 				data: {
 					userId: promise.item.card.userId,
 					type: 'credit',
-					amount: creditAmount,
+					amount: finalCreditAmount,
 					description: `Payment from ${promise.promiserName} for ${
 						promise.item.name
-					} (₦${amountInNaira.toFixed(2)} - ₦${serviceCharge.toFixed(
+					} (Paid: ₦${amountPaidInNaira.toFixed(
 						2
-					)} service charge)`,
+					)}, Desired: ₦${desiredAmount.toFixed(
+						2
+					)}, Paystack fees: ₦${paystackFees.toFixed(
+						2
+					)}, Platform fee: ₦${platformServiceCharge.toFixed(2)})`,
 					reference: reference,
 					balanceBefore: balanceBefore,
 					balanceAfter: balanceAfter,

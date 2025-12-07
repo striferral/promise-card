@@ -3,6 +3,12 @@
 import { prisma } from '@/lib/db';
 import { sendEmail } from '@/lib/email';
 import crypto from 'crypto';
+import {
+	createTransferRecipient,
+	initiateSingleTransfer,
+	initiateBulkTransfer,
+} from '@/lib/paystack-transfers';
+import { REVENUE_CONFIG } from '@/lib/revenue';
 
 // Get admin emails from environment variable
 const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || '')
@@ -88,20 +94,113 @@ export async function approveWithdrawal(withdrawalId: string) {
 		return { error: 'Withdrawal is not pending' };
 	}
 
-	// Update withdrawal status
-	await prisma.withdrawal.update({
-		where: { id: withdrawalId },
-		data: {
-			status: 'completed',
-			processedAt: new Date(),
-			completedAt: new Date(),
-		},
-	});
+	try {
+		// Ensure user has a Paystack recipient code
+		let recipientCode = withdrawal.user.paystackRecipientCode;
 
-	return {
-		success: true,
-		message: 'Withdrawal approved successfully',
-	};
+		// If no recipient code exists, create one
+		if (!recipientCode) {
+			const recipientResult = await createTransferRecipient({
+				type: 'nuban',
+				name: withdrawal.accountName,
+				accountNumber: withdrawal.accountNumber,
+				bankCode: withdrawal.bankCode,
+				description: `Promise Card User - ${withdrawal.user.email}`,
+				metadata: {
+					userId: withdrawal.userId,
+					email: withdrawal.user.email,
+					withdrawalId: withdrawal.id,
+				},
+			});
+
+			if (!recipientResult.status || !recipientResult.data) {
+				return {
+					error: `Failed to create transfer recipient: ${recipientResult.message}`,
+				};
+			}
+
+			recipientCode = recipientResult.data.recipient_code;
+
+			// Update user with recipient code
+			await prisma.user.update({
+				where: { id: withdrawal.userId },
+				data: {
+					paystackRecipientCode: recipientCode,
+					recipientCreatedAt: new Date(),
+				},
+			});
+		}
+
+		// Generate unique reference for this transfer
+		const transferReference = `wdr_${withdrawal.id}_${Date.now()}`;
+
+		// Initiate transfer via Paystack
+		const transferResult = await initiateSingleTransfer({
+			source: 'balance',
+			amount: Math.round(withdrawal.amount * 100), // Convert to kobo
+			recipient: recipientCode,
+			reason: `Withdrawal request #${withdrawal.id.slice(-8)}`,
+			reference: transferReference,
+			metadata: {
+				withdrawalId: withdrawal.id,
+				userId: withdrawal.userId,
+				userEmail: withdrawal.user.email,
+				userName: withdrawal.user.name,
+			},
+		});
+
+		if (!transferResult.status || !transferResult.data) {
+			return {
+				error: `Failed to initiate transfer: ${transferResult.message}`,
+			};
+		}
+
+		// Update withdrawal with transfer details
+		await prisma.withdrawal.update({
+			where: { id: withdrawalId },
+			data: {
+				status: 'processing',
+				transferCode: transferResult.data.transfer_code,
+				reference: transferReference,
+				processedAt: new Date(),
+			},
+		});
+
+		// Send confirmation email
+		await sendEmail(
+			withdrawal.user.email,
+			'Withdrawal Approved - Processing',
+			`
+				<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+					<h2 style="color: #10b981;">Withdrawal Approved</h2>
+					<p>Your withdrawal request has been approved and is being processed.</p>
+					<div style="background: #f3f4f6; padding: 16px; border-radius: 8px; margin: 20px 0;">
+						<p style="margin: 0;"><strong>Amount:</strong> ₦${withdrawal.amount.toLocaleString()}</p>
+						<p style="margin: 8px 0 0 0;"><strong>Account:</strong> ${
+							withdrawal.accountName
+						} - ${withdrawal.bankName}</p>
+						<p style="margin: 8px 0 0 0;"><strong>Reference:</strong> ${transferReference}</p>
+					</div>
+					<p>The funds will be credited to your account within a few minutes.</p>
+					<p style="color: #666; font-size: 14px;">
+						Transfer Code: ${transferResult.data.transfer_code}
+					</p>
+				</div>
+			`
+		);
+
+		return {
+			success: true,
+			message: 'Withdrawal approved and transfer initiated',
+			transferCode: transferResult.data.transfer_code,
+			reference: transferReference,
+		};
+	} catch (error) {
+		console.error('Error approving withdrawal:', error);
+		return {
+			error: 'An error occurred while processing the withdrawal',
+		};
+	}
 }
 
 export async function rejectWithdrawal(withdrawalId: string, reason: string) {
@@ -133,7 +232,8 @@ export async function rejectWithdrawal(withdrawalId: string, reason: string) {
 			where: { id: withdrawal.userId },
 			data: {
 				walletBalance: {
-					increment: withdrawal.amount + 100, // Refund amount + ₦100 fee
+					increment:
+						withdrawal.amount + REVENUE_CONFIG.WITHDRAWAL_FEE,
 				},
 			},
 		}),
@@ -142,12 +242,14 @@ export async function rejectWithdrawal(withdrawalId: string, reason: string) {
 			data: {
 				userId: withdrawal.userId,
 				type: 'credit',
-				amount: withdrawal.amount + 100,
+				amount: withdrawal.amount + REVENUE_CONFIG.WITHDRAWAL_FEE,
 				description: `Refund for rejected withdrawal: ${reason}`,
 				reference: `refund_${withdrawalId}`,
 				balanceBefore: withdrawal.user.walletBalance,
 				balanceAfter:
-					withdrawal.user.walletBalance + withdrawal.amount + 100,
+					withdrawal.user.walletBalance +
+					withdrawal.amount +
+					REVENUE_CONFIG.WITHDRAWAL_FEE,
 			},
 		}),
 	]);
@@ -156,6 +258,182 @@ export async function rejectWithdrawal(withdrawalId: string, reason: string) {
 		success: true,
 		message: 'Withdrawal rejected and amount refunded',
 	};
+}
+
+/**
+ * Process multiple withdrawals at once using Paystack bulk transfer
+ */
+export async function processBulkWithdrawals(withdrawalIds: string[]) {
+	if (!withdrawalIds || withdrawalIds.length === 0) {
+		return { error: 'No withdrawal IDs provided' };
+	}
+
+	// Fetch all withdrawals with user data
+	const withdrawals = await prisma.withdrawal.findMany({
+		where: {
+			id: { in: withdrawalIds },
+			status: 'pending',
+		},
+		include: { user: true },
+	});
+
+	if (withdrawals.length === 0) {
+		return { error: 'No pending withdrawals found' };
+	}
+
+	const transfers: Array<{
+		amount: number;
+		recipient: string;
+		reference: string;
+		reason: string;
+		withdrawalId: string;
+	}> = [];
+	const errors: Array<{ withdrawalId: string; error: string }> = [];
+
+	// Prepare transfers and ensure all users have recipient codes
+	for (const withdrawal of withdrawals) {
+		let recipientCode = withdrawal.user.paystackRecipientCode;
+
+		// Create recipient if doesn't exist
+		if (!recipientCode) {
+			const recipientResult = await createTransferRecipient({
+				type: 'nuban',
+				name: withdrawal.accountName,
+				accountNumber: withdrawal.accountNumber,
+				bankCode: withdrawal.bankCode,
+				description: `Promise Card User - ${withdrawal.user.email}`,
+				metadata: {
+					userId: withdrawal.userId,
+					email: withdrawal.user.email,
+					withdrawalId: withdrawal.id,
+				},
+			});
+
+			if (!recipientResult.status || !recipientResult.data) {
+				errors.push({
+					withdrawalId: withdrawal.id,
+					error: `Failed to create recipient: ${recipientResult.message}`,
+				});
+				continue;
+			}
+
+			recipientCode = recipientResult.data.recipient_code;
+
+			// Update user with recipient code
+			await prisma.user.update({
+				where: { id: withdrawal.userId },
+				data: {
+					paystackRecipientCode: recipientCode,
+					recipientCreatedAt: new Date(),
+				},
+			});
+		}
+
+		// Add to transfers array
+		const transferReference = `wdr_${withdrawal.id}_${Date.now()}`;
+		transfers.push({
+			amount: Math.round(withdrawal.amount * 100), // Convert to kobo
+			recipient: recipientCode,
+			reference: transferReference,
+			reason: `Withdrawal request #${withdrawal.id.slice(-8)}`,
+			withdrawalId: withdrawal.id,
+		});
+	}
+
+	if (transfers.length === 0) {
+		return {
+			error: 'No valid transfers to process',
+			errors,
+		};
+	}
+
+	try {
+		// Initiate bulk transfer
+		const bulkResult = await initiateBulkTransfer({
+			source: 'balance',
+			transfers: transfers.map(({ withdrawalId, ...t }) => t),
+			currency: 'NGN',
+		});
+
+		if (!bulkResult.status || !bulkResult.data) {
+			return {
+				error: `Bulk transfer failed: ${bulkResult.message}`,
+				errors,
+			};
+		}
+
+		// Update all withdrawals with transfer details
+		const updatePromises = bulkResult.data.map((transfer, index) => {
+			const withdrawalId = transfers[index].withdrawalId;
+			const transferReference = transfers[index].reference;
+
+			return prisma.withdrawal.update({
+				where: { id: withdrawalId },
+				data: {
+					status: 'processing',
+					transferCode: transfer.transfer_code,
+					reference: transferReference,
+					processedAt: new Date(),
+				},
+			});
+		});
+
+		await Promise.all(updatePromises);
+
+		// Send confirmation emails
+		const emailPromises = withdrawals.map((withdrawal) => {
+			const transfer = bulkResult.data?.find(
+				(t, i) => transfers[i].withdrawalId === withdrawal.id
+			);
+			if (!transfer) return Promise.resolve();
+
+			return sendEmail(
+				withdrawal.user.email,
+				'Withdrawal Approved - Processing',
+				`
+					<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+						<h2 style="color: #10b981;">Withdrawal Approved</h2>
+						<p>Your withdrawal request has been approved and is being processed.</p>
+						<div style="background: #f3f4f6; padding: 16px; border-radius: 8px; margin: 20px 0;">
+							<p style="margin: 0;"><strong>Amount:</strong> ₦${withdrawal.amount.toLocaleString()}</p>
+							<p style="margin: 8px 0 0 0;"><strong>Account:</strong> ${
+								withdrawal.accountName
+							} - ${withdrawal.bankName}</p>
+							<p style="margin: 8px 0 0 0;"><strong>Reference:</strong> ${
+								transfers.find(
+									(t) => t.withdrawalId === withdrawal.id
+								)?.reference
+							}</p>
+						</div>
+						<p>The funds will be credited to your account within a few minutes.</p>
+						<p style="color: #666; font-size: 14px;">
+							Transfer Code: ${transfer.transfer_code}
+						</p>
+					</div>
+				`
+			);
+		});
+
+		await Promise.allSettled(emailPromises);
+
+		return {
+			success: true,
+			message: `Successfully initiated ${bulkResult.data.length} transfers`,
+			processed: bulkResult.data.length,
+			errors: errors.length > 0 ? errors : undefined,
+			transfers: bulkResult.data.map((t, i) => ({
+				withdrawalId: transfers[i].withdrawalId,
+				transferCode: t.transfer_code,
+				status: t.status,
+			})),
+		};
+	} catch (error) {
+		console.error('Error processing bulk withdrawals:', error);
+		return {
+			error: 'An error occurred while processing bulk withdrawals',
+			errors,
+		};
+	}
 }
 
 // Get financial statistics for admin dashboard

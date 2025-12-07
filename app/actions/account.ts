@@ -3,6 +3,7 @@
 import { prisma } from '@/lib/db';
 import { getCurrentUser } from './auth';
 import { recordRevenue, REVENUE_CONFIG } from '@/lib/revenue';
+import { createTransferRecipient } from '@/lib/paystack-transfers';
 
 export async function getBanks() {
 	try {
@@ -136,6 +137,36 @@ export async function updateAccountDetails(formData: FormData) {
 		});
 	}
 
+	// Create or update Paystack transfer recipient
+	let recipientCode = user.paystackRecipientCode;
+
+	if (!recipientCode) {
+		// Create new recipient
+		const recipientResult = await createTransferRecipient({
+			type: 'nuban',
+			name: accountName,
+			accountNumber: accountNumber,
+			bankCode: bankCode,
+			description: `Promise Card User - ${user.email}`,
+			metadata: {
+				userId: user.id,
+				email: user.email,
+				profession: finalProfession,
+			},
+		});
+
+		if (recipientResult.status && recipientResult.data) {
+			recipientCode = recipientResult.data.recipient_code;
+		} else {
+			console.error(
+				'Failed to create transfer recipient:',
+				recipientResult.message
+			);
+			// Continue with account setup but log the error
+			// We can retry creating recipient during withdrawal
+		}
+	}
+
 	// Update user account details
 	await prisma.user.update({
 		where: { id: user.id },
@@ -147,6 +178,8 @@ export async function updateAccountDetails(formData: FormData) {
 			bankCode,
 			profession: finalProfession,
 			accountDetailsSet: true,
+			paystackRecipientCode: recipientCode || undefined,
+			recipientCreatedAt: recipientCode ? new Date() : undefined,
 		},
 	});
 

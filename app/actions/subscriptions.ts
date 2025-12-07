@@ -12,7 +12,12 @@ export type SubscriptionPlan = 'free' | 'basic' | 'premium';
 export async function upgradeSubscription(
 	userId: string,
 	plan: SubscriptionPlan,
-	paymentReference?: string
+	paymentReference?: string,
+	paymentDetails?: {
+		amountPaid?: number;
+		desiredAmount?: number;
+		paystackFees?: number;
+	}
 ) {
 	if (plan === 'free') {
 		return { error: 'Cannot upgrade to free plan' };
@@ -82,6 +87,12 @@ export async function upgradeSubscription(
 			plan,
 			paymentReference,
 			expiresAt: expiresAt.toISOString(),
+			...(paymentDetails && {
+				amountPaid: paymentDetails.amountPaid,
+				desiredAmount: paymentDetails.desiredAmount,
+				paystackFees: paymentDetails.paystackFees,
+				feesPaidByUser: true,
+			}),
 		},
 	});
 
