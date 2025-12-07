@@ -283,6 +283,7 @@ export default function EditCardContent({ card }: { card: CardWithDetails }) {
 												Type *
 											</Label>
 											<select
+												title='select'
 												id='itemType'
 												name='itemType'
 												required

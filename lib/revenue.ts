@@ -1,55 +1,13 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { prisma } from './db';
+import { REVENUE_CONFIG } from './config';
 
 /**
  * Revenue tracking utilities for the platform
+ * Note: REVENUE_CONFIG is now imported from config.ts for client component compatibility
  */
 
-export const REVENUE_CONFIG = {
-	PAYMENT_SERVICE_CHARGE: 0.02, // 2% on payments
-	WITHDRAWAL_FEE: 100, // ₦100 per withdrawal
-	SUBSCRIPTION_PLANS: {
-		free: {
-			name: 'Free',
-			price: 0,
-			cardLimit: 1,
-			itemsPerCardLimit: 5,
-			features: [
-				'Basic card creation',
-				'Public sharing',
-				'Email notifications',
-			],
-		},
-		basic: {
-			name: 'Basic',
-			price: 2000, // ₦2,000/month
-			cardLimit: 3,
-			itemsPerCardLimit: 10,
-			features: [
-				'Up to 3 cards',
-				'10 items per card',
-				'Priority support',
-				'Featured cards',
-				'Advanced analytics',
-			],
-		},
-		premium: {
-			name: 'Premium',
-			price: 5000, // ₦5,000/month
-			cardLimit: 20,
-			itemsPerCardLimit: 20,
-			features: [
-				'Up to 20 cards',
-				'20 items per card',
-				'Premium badge',
-				'Featured cards',
-				'Priority support',
-				'Advanced analytics',
-				'Remove platform branding',
-			],
-		},
-	},
-} as const;
+export { REVENUE_CONFIG } from './config';
 
 export type RevenueType =
 	| 'payment_fee'

@@ -30,6 +30,7 @@ const plans = [
 		features: [
 			{ text: '1 card maximum', included: true },
 			{ text: '5 items per card', included: true },
+			{ text: 'Withdraw up to ₦5,000 per transaction', included: true },
 			{ text: 'Basic card creation', included: true },
 			{ text: 'Public sharing', included: true },
 			{ text: 'Email notifications', included: true },
@@ -48,6 +49,7 @@ const plans = [
 		features: [
 			{ text: '3 cards maximum', included: true },
 			{ text: '10 items per card', included: true },
+			{ text: 'Withdraw up to ₦20,000 per transaction', included: true },
 			{ text: 'Hide promise counts', included: true },
 			{ text: 'Priority support', included: true },
 			{ text: 'Featured cards', included: true },
@@ -64,6 +66,7 @@ const plans = [
 		features: [
 			{ text: '20 cards maximum', included: true },
 			{ text: '20 items per card', included: true },
+			{ text: 'Withdraw up to ₦50,000 per transaction', included: true },
 			{ text: 'Hide promise counts', included: true },
 			{ text: 'Premium badge', included: true },
 			{ text: 'Featured cards', included: true },

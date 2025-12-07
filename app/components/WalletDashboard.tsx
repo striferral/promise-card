@@ -28,6 +28,7 @@ import {
 	Clock,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { REVENUE_CONFIG } from '@/lib/config';
 
 type Transaction = {
 	id: string;
@@ -47,12 +48,23 @@ type Withdrawal = {
 	failureReason: string | null;
 };
 
-export default function WalletDashboard({ userId }: { userId: string }) {
+type SubscriptionPlan = 'free' | 'basic' | 'premium';
+
+export default function WalletDashboard({
+	userId,
+	subscriptionPlan,
+}: {
+	userId: string;
+	subscriptionPlan: SubscriptionPlan;
+}) {
 	const [balance, setBalance] = useState(0);
 	const [transactions, setTransactions] = useState<Transaction[]>([]);
 	const [withdrawals, setWithdrawals] = useState<Withdrawal[]>([]);
 	const [withdrawAmount, setWithdrawAmount] = useState('');
 	const [loading, setLoading] = useState(true);
+
+	const minWithdrawal = REVENUE_CONFIG.WITHDRAWAL_LIMITS.MIN;
+	const maxWithdrawal = REVENUE_CONFIG.WITHDRAWAL_LIMITS[subscriptionPlan];
 
 	const loadWalletData = async () => {
 		setLoading(true);
@@ -156,8 +168,10 @@ export default function WalletDashboard({ userId }: { userId: string }) {
 								Request Withdrawal
 							</CardTitle>
 							<CardDescription>
-								Minimum withdrawal: ₦2,000 • Withdrawal fee:
-								₦100 per transaction
+								Minimum: ₦{minWithdrawal.toLocaleString()} •
+								Maximum: ₦{maxWithdrawal.toLocaleString()} (
+								{subscriptionPlan} plan) • Fee: ₦100 per
+								transaction
 							</CardDescription>
 						</CardHeader>
 						<CardContent>
@@ -173,7 +187,8 @@ export default function WalletDashboard({ userId }: { userId: string }) {
 									}
 									placeholder='Enter amount'
 									className='flex-1'
-									min='2000'
+									min={minWithdrawal}
+									max={maxWithdrawal}
 									step='100'
 								/>
 								<Button

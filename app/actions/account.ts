@@ -2,7 +2,7 @@
 
 import { prisma } from '@/lib/db';
 import { getCurrentUser } from './auth';
-import { recordRevenue } from '@/lib/revenue';
+import { recordRevenue, REVENUE_CONFIG } from '@/lib/revenue';
 
 export async function getBanks() {
 	try {
@@ -195,12 +195,24 @@ export async function requestWithdrawal(userId: string, amount: number) {
 		return { error: 'Please set up your account details first' };
 	}
 
-	const WITHDRAWAL_FEE = 100; // ₦100 withdrawal fee
-	const MIN_WITHDRAWAL = 2000; // Minimum ₦2,000 withdrawal
+	const WITHDRAWAL_FEE = REVENUE_CONFIG.WITHDRAWAL_FEE; // ₦100 withdrawal fee
+	const MIN_WITHDRAWAL = REVENUE_CONFIG.WITHDRAWAL_LIMITS.MIN; // ₦1,000 minimum
+	const MAX_WITHDRAWAL =
+		REVENUE_CONFIG.WITHDRAWAL_LIMITS[
+			user.subscriptionPlan as keyof typeof REVENUE_CONFIG.WITHDRAWAL_LIMITS
+		]; // Based on plan
 
 	if (amount < MIN_WITHDRAWAL) {
 		return {
 			error: `Minimum withdrawal amount is ₦${MIN_WITHDRAWAL.toLocaleString()}`,
+		};
+	}
+
+	if (amount > MAX_WITHDRAWAL) {
+		return {
+			error: `Maximum withdrawal for ${
+				user.subscriptionPlan
+			} plan is ₦${MAX_WITHDRAWAL.toLocaleString()}. Upgrade your plan for higher limits.`,
 		};
 	}
 

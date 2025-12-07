@@ -42,7 +42,12 @@ export default async function WalletPage() {
 					</div>
 				</div>
 			</header>
-			<WalletDashboard userId={user.id} />
+			<WalletDashboard
+				userId={user.id}
+				subscriptionPlan={
+					user.subscriptionPlan as 'free' | 'basic' | 'premium'
+				}
+			/>
 		</div>
 	);
 }
