@@ -218,6 +218,36 @@ export async function updateTransferRecipient(
 }
 
 /**
+ * Delete a transfer recipient
+ * Note: You cannot delete a recipient that has been used for a transfer
+ */
+export async function deleteTransferRecipient(
+	recipientCode: string
+): Promise<{ status: boolean; message: string }> {
+	try {
+		const response = await fetch(
+			`${PAYSTACK_BASE_URL}/transferrecipient/${recipientCode}`,
+			{
+				method: 'DELETE',
+				headers: {
+					Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`,
+					'Content-Type': 'application/json',
+				},
+			}
+		);
+
+		const data = await response.json();
+		return data;
+	} catch (error) {
+		console.error('Error deleting transfer recipient:', error);
+		return {
+			status: false,
+			message: 'Failed to delete transfer recipient',
+		};
+	}
+}
+
+/**
  * Initiate a single transfer
  * Amount should be in kobo (multiply Naira by 100)
  */

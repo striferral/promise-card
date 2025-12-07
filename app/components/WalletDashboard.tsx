@@ -6,6 +6,7 @@ import {
 	getWalletTransactions,
 	requestWithdrawal,
 	getWithdrawals,
+	regenerateRecipient,
 } from '@/app/actions/account';
 import {
 	Card,
@@ -53,15 +54,24 @@ type SubscriptionPlan = 'free' | 'basic' | 'premium';
 export default function WalletDashboard({
 	userId,
 	subscriptionPlan,
+	accountName,
+	accountNumber,
+	bankName,
+	paystackRecipientCode,
 }: {
 	userId: string;
 	subscriptionPlan: SubscriptionPlan;
+	accountName: string;
+	accountNumber: string;
+	bankName: string;
+	paystackRecipientCode: string | null;
 }) {
 	const [balance, setBalance] = useState(0);
 	const [transactions, setTransactions] = useState<Transaction[]>([]);
 	const [withdrawals, setWithdrawals] = useState<Withdrawal[]>([]);
 	const [withdrawAmount, setWithdrawAmount] = useState('');
 	const [loading, setLoading] = useState(true);
+	const [regenerating, setRegenerating] = useState(false);
 
 	const minWithdrawal = REVENUE_CONFIG.WITHDRAWAL_LIMITS.MIN;
 	const maxWithdrawal = REVENUE_CONFIG.WITHDRAWAL_LIMITS[subscriptionPlan];
@@ -120,6 +130,54 @@ export default function WalletDashboard({
 		}
 	};
 
+	const handleRegenerateRecipient = async () => {
+		if (
+			!confirm(
+				'Are you sure you want to regenerate your Paystack transfer recipient? This should only be done if you need to change your bank account details.'
+			)
+		) {
+			return;
+		}
+
+		setRegenerating(true);
+		const result = await regenerateRecipient();
+		setRegenerating(false);
+
+		if (result.error) {
+			toast.error(result.error);
+		} else {
+			toast.success(
+				'Transfer recipient regenerated successfully! You can now update your account details.'
+			);
+			// Reload page to get updated recipient code
+			window.location.reload();
+		}
+	};
+
+	const handleRegenerateRecipient = async () => {
+		if (
+			!confirm(
+				'Are you sure you want to regenerate your Paystack transfer recipient? This should only be done if you need to change your bank account details.'
+			)
+		) {
+			return;
+		}
+
+		setRegenerating(true);
+		const result = await regenerateRecipient();
+		setRegenerating(false);
+
+		if (result.error) {
+			toast.error(result.error);
+		} else {
+			toast.success(
+				'Transfer recipient regenerated successfully! You can now update your account details.'
+			);
+			// Reload page to get updated recipient code
+			window.location.reload();
+		}
+	};
+
 	if (loading) {
 		return (
 			<div className='flex items-center justify-center p-12'>
@@ -161,6 +219,76 @@ export default function WalletDashboard({
 					value='overview'
 					className='space-y-6'
 				>
+					{/* Account Details */}
+					<Card className='border-accent/20'>
+						<CardHeader>
+							<CardTitle className='font-serif'>
+								Bank Account Details
+							</CardTitle>
+							<CardDescription>
+								Your registered withdrawal account
+							</CardDescription>
+						</CardHeader>
+						<CardContent className='space-y-4'>
+							<div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+								<div>
+									<p className='text-sm text-muted-foreground mb-1'>
+										Account Name
+									</p>
+									<p className='font-medium'>{accountName}</p>
+								</div>
+								<div>
+									<p className='text-sm text-muted-foreground mb-1'>
+										Account Number
+									</p>
+									<p className='font-medium'>
+										{accountNumber}
+									</p>
+								</div>
+								<div>
+									<p className='text-sm text-muted-foreground mb-1'>
+										Bank Name
+									</p>
+									<p className='font-medium'>{bankName}</p>
+								</div>
+								<div>
+									<p className='text-sm text-muted-foreground mb-1'>
+										Paystack Status
+									</p>
+									<Badge
+										variant={
+											paystackRecipientCode
+												? 'default'
+												: 'secondary'
+										}
+									>
+										{paystackRecipientCode
+											? '✓ Verified'
+											: '⚠ Pending'}
+									</Badge>
+								</div>
+							</div>
+							<Separator />
+							<div className='flex flex-col sm:flex-row gap-3 items-start'>
+								<Button
+									variant='outline'
+									onClick={handleRegenerateRecipient}
+									disabled={regenerating}
+									className='flex-shrink-0'
+								>
+									{regenerating && (
+										<Loader2 className='mr-2 h-4 w-4 animate-spin' />
+									)}
+									Regenerate Paystack Recipient
+								</Button>
+								<p className='text-xs text-muted-foreground'>
+									Use this if you need to change your bank
+									account details in your profile
+								</p>
+							</div>
+						</CardContent>
+					</Card>
+
 					{/* Withdraw Form */}
 					<Card className='border-accent/20'>
 						<CardHeader>

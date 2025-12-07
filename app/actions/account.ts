@@ -3,7 +3,10 @@
 import { prisma } from '@/lib/db';
 import { getCurrentUser } from './auth';
 import { recordRevenue, REVENUE_CONFIG } from '@/lib/revenue';
-import { createTransferRecipient } from '@/lib/paystack-transfers';
+import {
+	createTransferRecipient,
+	deleteTransferRecipient,
+} from '@/lib/paystack-transfers';
 
 export async function getBanks() {
 	try {
@@ -140,8 +143,45 @@ export async function updateAccountDetails(formData: FormData) {
 	// Create or update Paystack transfer recipient
 	let recipientCode = user.paystackRecipientCode;
 
-	if (!recipientCode) {
-		// Create new recipient
+	// Check if bank details changed (requiring new recipient)
+	const bankDetailsChanged =
+		recipientCode &&
+		(user.accountNumber !== accountNumber || user.bankCode !== bankCode);
+
+	if (bankDetailsChanged && recipientCode) {
+		// Bank account changed - need to create new recipient
+		// Try to delete old recipient (may fail if already used in transfers)
+		await deleteTransferRecipient(recipientCode);
+
+		// Create new recipient with updated bank details
+		const recipientResult = await createTransferRecipient({
+			type: 'nuban',
+			name: accountName,
+			accountNumber: accountNumber,
+			bankCode: bankCode,
+			description: `Promise Card User - ${user.email}`,
+			metadata: {
+				userId: user.id,
+				email: user.email,
+				profession: finalProfession,
+			},
+		});
+
+		if (recipientResult.status && recipientResult.data) {
+			recipientCode = recipientResult.data.recipient_code;
+			console.log(
+				'Successfully created new transfer recipient after bank details change'
+			);
+		} else {
+			console.error(
+				'Failed to create new transfer recipient:',
+				recipientResult.message
+			);
+			// Reset recipient code since old one is invalid
+			recipientCode = null;
+		}
+	} else if (!recipientCode) {
+		// Create new recipient (first time setup)
 		const recipientResult = await createTransferRecipient({
 			type: 'nuban',
 			name: accountName,
@@ -180,6 +220,58 @@ export async function updateAccountDetails(formData: FormData) {
 			accountDetailsSet: true,
 			paystackRecipientCode: recipientCode || undefined,
 			recipientCreatedAt: recipientCode ? new Date() : undefined,
+		},
+	});
+
+	return { success: true };
+}
+
+export async function regenerateRecipient() {
+	const user = await getCurrentUser();
+	if (!user) {
+		return { error: 'Please sign in first' };
+	}
+
+	if (
+		!user.accountDetailsSet ||
+		!user.accountNumber ||
+		!user.bankCode ||
+		!user.accountName
+	) {
+		return { error: 'Please set up your account details first' };
+	}
+
+	// Delete old recipient if exists
+	if (user.paystackRecipientCode) {
+		await deleteTransferRecipient(user.paystackRecipientCode);
+	}
+
+	// Create new recipient
+	const recipientResult = await createTransferRecipient({
+		type: 'nuban',
+		name: user.accountName,
+		accountNumber: user.accountNumber,
+		bankCode: user.bankCode,
+		description: `Promise Card User - ${user.email}`,
+		metadata: {
+			userId: user.id,
+			email: user.email,
+			profession: user.profession || '',
+		},
+	});
+
+	if (!recipientResult.status || !recipientResult.data) {
+		return {
+			error: recipientResult.message || 'Failed to regenerate recipient',
+		};
+	}
+
+	// Update user with new recipient code
+	await prisma.user.update({
+		where: { id: user.id },
+		data: {
+			paystackRecipientCode: recipientResult.data.recipient_code,
+			recipientCreatedAt: new Date(),
 		},
 	});
 
