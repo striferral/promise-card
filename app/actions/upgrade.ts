@@ -21,7 +21,8 @@ export async function initiateUpgrade(formData: FormData) {
 	const desiredAmount = planConfig.price; // Amount platform wants to receive in Naira
 
 	// Calculate charge amount including Paystack fees (user pays the fees)
-	const feeCalculation = calculateChargeAmountInKobo(desiredAmount);
+	const { amountInKobo, feeCalculation } =
+		calculateChargeAmountInKobo(desiredAmount);
 
 	try {
 		// Initialize Paystack transaction
@@ -35,14 +36,14 @@ export async function initiateUpgrade(formData: FormData) {
 				},
 				body: JSON.stringify({
 					email: user.email,
-					amount: feeCalculation.chargeAmountInKobo, // Charge customer the amount including fees
+					amount: amountInKobo, // Charge customer the amount including fees
 					metadata: {
 						userId: user.id,
 						plan,
 						type: 'subscription',
 						desiredAmount, // What platform expects to receive
 						chargeAmount: feeCalculation.chargeAmount,
-						paystackFees: feeCalculation.paystackFees,
+						paystackFees: feeCalculation.feesPassed,
 						feesPassed: true,
 					},
 					callback_url: `${process.env.NEXT_PUBLIC_APP_URL}/pricing/verify`,
