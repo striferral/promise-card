@@ -43,6 +43,7 @@ const ITEM_TYPES: Record<string, string> = {
 	gadget: '📱',
 	food: '🍕',
 	other: '🎁',
+	custom: '✨',
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -222,9 +223,21 @@ export default function PublicCardView({
 															}
 														</span>
 														<div>
-															<h3 className='text-lg font-bold'>
-																{item.name}
-															</h3>
+															<div className='flex items-center gap-2 flex-wrap'>
+																<h3 className='text-lg font-bold'>
+																	{item.name}
+																</h3>
+																{item.customType && (
+																	<Badge
+																		variant='outline'
+																		className='text-xs'
+																	>
+																		{
+																			item.customType
+																		}
+																	</Badge>
+																)}
+															</div>
 															{item.quantity >
 																1 && (
 																<Badge

@@ -72,7 +72,8 @@ model CardItem {
   name        String
   description String?
   quantity    Int      @default(1)
-  itemType    String // "cash", "shoes", "bag", "clothing", "other"
+  itemType    String // "cash", "shoes", "bag", "clothing", "other", "custom"
+  customType  String? // Custom type name when itemType is "custom" (e.g., "Money", "Profession")
   createdAt   DateTime @default(now())
 
   cardId String
@@ -81,6 +82,7 @@ model CardItem {
   promises Promise[]
 
   @@index([cardId])
+  @@index([customType])
 }
 
 model Promise {
@@ -239,4 +241,15 @@ model ReferralEarning {
   @@index([referredUserId])
   @@index([status])
   @@index([createdAt])
+}
+
+model CustomTypeUsage {
+  id         String   @id @default(cuid())
+  typeName   String // The custom type name (e.g., "Money", "Profession", "Books")
+  usageCount Int      @default(1)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([typeName])
+  @@index([usageCount])
 }

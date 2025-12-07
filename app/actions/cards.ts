@@ -77,10 +77,32 @@ export async function addCardItem(cardId: string, formData: FormData) {
 	const name = formData.get('name') as string;
 	const description = formData.get('description') as string;
 	const itemType = formData.get('itemType') as string;
+	const customType = formData.get('customType') as string | null;
 	const quantity = parseInt(formData.get('quantity') as string) || 1;
 
 	if (!name || !itemType) {
 		return { error: 'Please fill in all required fields' };
+	}
+
+	// Validate custom type is provided when itemType is 'custom'
+	if (itemType === 'custom' && !customType) {
+		return { error: 'Please enter a custom type name' };
+	}
+
+	// Track custom type usage
+	if (itemType === 'custom' && customType) {
+		await prisma.customTypeUsage.upsert({
+			where: { typeName: customType },
+			update: {
+				usageCount: {
+					increment: 1,
+				},
+			},
+			create: {
+				typeName: customType,
+				usageCount: 1,
+			},
+		});
 	}
 
 	await prisma.cardItem.create({
@@ -88,6 +110,7 @@ export async function addCardItem(cardId: string, formData: FormData) {
 			name,
 			description: description || null,
 			itemType,
+			customType: itemType === 'custom' ? customType : null,
 			quantity,
 			cardId,
 		},

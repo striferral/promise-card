@@ -38,15 +38,29 @@ export async function createCard(formData: FormData) {
 
 ### Database Layer: Prisma 7 with PostgreSQL
 
--   Schema: `prisma/schema.prisma` (196 lines, 13 models)
+-   Schema: `prisma/schema.prisma` (245+ lines, 14+ models)
 -   **Key relationships**:
     -   `User` → `Card[]` → `CardItem[]` → `Promise[]`
     -   `User` → `WalletTransaction[]`, `Withdrawal[]`, `Subscription[]`
     -   `User` → `Referral[]` (3-level referral chain tracking)
     -   `Referral` → `ReferralEarning[]` (commission ledger)
+    -   `CardItem.customType` → `CustomTypeUsage` (tracks popular custom types)
 -   Prisma Client singleton in `lib/db.ts` (avoids hot-reload duplicates)
 -   Migrations in `prisma/migrations/` - use `pnpm db:migrate` for changes
 -   **Important**: Use `@prisma/adapter-pg` for Prisma 7 compatibility
+
+### Custom Item Types System
+
+Users can create custom item types beyond the predefined categories:
+
+-   **Predefined types**: Cash, Shoes, Bag, Clothing, Gadget, Food/Drink, Other
+-   **Custom types**: Users can define their own (e.g., "Money", "Profession", "Books")
+-   **Numeric validation**: Types like "Money", "Amount", "Cash" require numeric item names
+-   **Usage tracking**: `CustomTypeUsage` model tracks how often each custom type is used
+-   **Display**: Custom types shown with ✨ emoji and badge displaying type name
+-   **Frontend validation**: Real-time hints when numeric types are selected
+
+Example: User creates custom type "Money" → Item name must be a number (e.g., "5000")
 
 ### Revenue Model (3-Stream System)
 

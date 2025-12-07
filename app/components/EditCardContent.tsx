@@ -45,7 +45,19 @@ const ITEM_TYPES = [
 	{ value: 'gadget', label: '📱 Gadget', emoji: '📱' },
 	{ value: 'food', label: '🍕 Food/Drink', emoji: '🍕' },
 	{ value: 'other', label: '🎁 Other', emoji: '🎁' },
+	{ value: 'custom', label: '✨ Custom Type', emoji: '✨' },
 ];
+
+const NUMERIC_TYPES = ['Money', 'Amount', 'Cash'];
+
+function isNumericType(customType: string | null): boolean {
+	return (
+		customType !== null &&
+		NUMERIC_TYPES.some(
+			(type) => type.toLowerCase() === customType.toLowerCase()
+		)
+	);
+}
 
 export default function EditCardContent({ card }: { card: CardWithDetails }) {
 	const [isAdding, setIsAdding] = useState(false);
@@ -59,12 +71,26 @@ export default function EditCardContent({ card }: { card: CardWithDetails }) {
 		card.promisesVisible
 	);
 	const [copied, setCopied] = useState(false);
+	const [selectedItemType, setSelectedItemType] = useState('cash');
+	const [customTypeName, setCustomTypeName] = useState('');
 	const shareUrl = `${
 		process.env.NEXT_PUBLIC_APP_URL || window.location.origin
 	}/c/${card.shareCode}`;
 
 	async function handleAddItem(formData: FormData) {
 		setIsLoading(true);
+
+		// Validate numeric input for Money type
+		if (selectedItemType === 'custom' && isNumericType(customTypeName)) {
+			const itemName = formData.get('name') as string;
+			if (itemName && isNaN(Number(itemName))) {
+				toast.error(
+					`For ${customTypeName} type, item name must be a number (e.g., 1000)`
+				);
+				setIsLoading(false);
+				return;
+			}
+		}
 
 		const result = await addCardItem(card.id, formData);
 
@@ -74,6 +100,8 @@ export default function EditCardContent({ card }: { card: CardWithDetails }) {
 		} else {
 			toast.success('Item added to your wish list! 🎁');
 			setIsAdding(false);
+			setSelectedItemType('cash');
+			setCustomTypeName('');
 			window.location.reload();
 		}
 	}
@@ -269,11 +297,38 @@ export default function EditCardContent({ card }: { card: CardWithDetails }) {
 										<div className='space-y-2'>
 											<Label htmlFor='name'>
 												Item Name *
+												{selectedItemType ===
+													'custom' &&
+													isNumericType(
+														customTypeName
+													) && (
+														<span className='text-xs text-muted-foreground ml-2'>
+															(must be a number,
+															e.g., 1000)
+														</span>
+													)}
 											</Label>
 											<Input
 												id='name'
 												name='name'
-												placeholder='iPhone 16 Pro'
+												placeholder={
+													selectedItemType ===
+														'custom' &&
+													isNumericType(
+														customTypeName
+													)
+														? '5000'
+														: 'iPhone 16 Pro'
+												}
+												type={
+													selectedItemType ===
+														'custom' &&
+													isNumericType(
+														customTypeName
+													)
+														? 'number'
+														: 'text'
+												}
 												required
 												disabled={isLoading}
 											/>
@@ -286,6 +341,12 @@ export default function EditCardContent({ card }: { card: CardWithDetails }) {
 												title='select'
 												id='itemType'
 												name='itemType'
+												value={selectedItemType}
+												onChange={(e) =>
+													setSelectedItemType(
+														e.target.value
+													)
+												}
 												required
 												disabled={isLoading}
 												className='flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50'
@@ -301,7 +362,37 @@ export default function EditCardContent({ card }: { card: CardWithDetails }) {
 											</select>
 										</div>
 									</div>
-
+									{selectedItemType === 'custom' && (
+										<div className='space-y-2'>
+											<Label htmlFor='customType'>
+												Custom Type Name *
+												<span className='text-xs text-muted-foreground ml-2'>
+													(e.g., Money, Profession,
+													Books)
+												</span>
+											</Label>
+											<Input
+												id='customType'
+												name='customType'
+												value={customTypeName}
+												onChange={(e) =>
+													setCustomTypeName(
+														e.target.value
+													)
+												}
+												placeholder='Enter custom type (e.g., Money)'
+												required
+												disabled={isLoading}
+											/>
+											{isNumericType(customTypeName) && (
+												<p className='text-xs text-christmas-gold'>
+													💡 Tip: &quot;
+													{customTypeName}&quot;
+													requires numeric item names
+												</p>
+											)}
+										</div>
+									)}{' '}
 									<div className='space-y-2'>
 										<Label htmlFor='description'>
 											Description (Optional)
@@ -314,7 +405,6 @@ export default function EditCardContent({ card }: { card: CardWithDetails }) {
 											disabled={isLoading}
 										/>
 									</div>
-
 									<div className='space-y-2'>
 										<Label htmlFor='quantity'>
 											Quantity
@@ -328,7 +418,6 @@ export default function EditCardContent({ card }: { card: CardWithDetails }) {
 											disabled={isLoading}
 										/>
 									</div>
-
 									<Button
 										type='submit'
 										disabled={isLoading}
@@ -368,6 +457,15 @@ export default function EditCardContent({ card }: { card: CardWithDetails }) {
 										item.promises.filter((p) => p.verified);
 									const promiseCount =
 										verifiedPromises.length;
+									const displayEmoji =
+										item.itemType === 'custom'
+											? '✨'
+											: itemType?.emoji;
+									const displayType =
+										item.itemType === 'custom' &&
+										item.customType
+											? item.customType
+											: itemType?.label;
 
 									return (
 										<div
@@ -376,13 +474,21 @@ export default function EditCardContent({ card }: { card: CardWithDetails }) {
 										>
 											<div className='flex justify-between items-start gap-4'>
 												<div className='flex-1 space-y-2'>
-													<div className='flex items-center gap-2'>
+													<div className='flex items-center gap-2 flex-wrap'>
 														<span className='text-2xl'>
-															{itemType?.emoji}
+															{displayEmoji}
 														</span>
 														<h3 className='text-xl font-bold'>
 															{item.name}
 														</h3>
+														{item.customType && (
+															<Badge
+																variant='outline'
+																className='text-xs'
+															>
+																{displayType}
+															</Badge>
+														)}
 														{item.quantity > 1 && (
 															<Badge variant='secondary'>
 																x{item.quantity}
