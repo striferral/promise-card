@@ -331,25 +331,62 @@ export async function processReferralCommission(
 		);
 
 		if (amount > 0) {
-			// Create referral earning record
-			const earning = await prisma.referralEarning.create({
-				data: {
-					userId: referral.referrerId,
-					referredUserId: userId,
-					subscriptionId,
-					level: referral.level,
-					plan,
-					amount,
-					percentage,
-					status: 'pending',
-					description: `Level ${referral.level}: ${
-						referral.referredUser.name ||
-						referral.referredUser.email
-					} upgraded to ${
-						plan.charAt(0).toUpperCase() + plan.slice(1)
-					}`,
-				},
+			// Get current referrer balance
+			const referrer = await prisma.user.findUnique({
+				where: { id: referral.referrerId },
 			});
+
+			if (!referrer) continue;
+
+			const newBalance = referrer.walletBalance + amount;
+
+			// Create earning and credit immediately using transaction
+			const [earning] = await prisma.$transaction([
+				// Create referral earning record as credited
+				prisma.referralEarning.create({
+					data: {
+						userId: referral.referrerId,
+						referredUserId: userId,
+						subscriptionId,
+						level: referral.level,
+						plan,
+						amount,
+						percentage,
+						status: 'credited',
+						description: `Level ${referral.level}: ${
+							referral.referredUser.name ||
+							referral.referredUser.email
+						} upgraded to ${
+							plan.charAt(0).toUpperCase() + plan.slice(1)
+						}`,
+						creditedAt: new Date(),
+					},
+				}),
+				// Update wallet balance
+				prisma.user.update({
+					where: { id: referral.referrerId },
+					data: { walletBalance: newBalance },
+				}),
+				// Create wallet transaction
+				prisma.walletTransaction.create({
+					data: {
+						userId: referral.referrerId,
+						amount,
+						type: 'credit',
+						description: `Level ${
+							referral.level
+						} referral commission: ${
+							referral.referredUser.name ||
+							referral.referredUser.email
+						} upgraded to ${
+							plan.charAt(0).toUpperCase() + plan.slice(1)
+						}`,
+						reference: subscriptionId || undefined,
+						balanceBefore: referrer.walletBalance,
+						balanceAfter: newBalance,
+					},
+				}),
+			]);
 
 			earnings.push(earning);
 		}

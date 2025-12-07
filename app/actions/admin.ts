@@ -157,3 +157,192 @@ export async function rejectWithdrawal(withdrawalId: string, reason: string) {
 		message: 'Withdrawal rejected and amount refunded',
 	};
 }
+
+// Get financial statistics for admin dashboard
+export async function getFinancialStats() {
+	// Get revenue breakdown
+	const revenueByType = await prisma.revenue.groupBy({
+		by: ['type'],
+		_sum: {
+			amount: true,
+		},
+		_count: {
+			id: true,
+		},
+	});
+
+	// Total revenue
+	const totalRevenue = await prisma.revenue.aggregate({
+		_sum: {
+			amount: true,
+		},
+	});
+
+	// Total withdrawals processed
+	const withdrawalStats = await prisma.withdrawal.groupBy({
+		by: ['status'],
+		_sum: {
+			amount: true,
+		},
+		_count: {
+			id: true,
+		},
+	});
+
+	// User wallet balances summary
+	const walletStats = await prisma.user.aggregate({
+		_sum: {
+			walletBalance: true,
+		},
+		_count: {
+			id: true,
+		},
+	});
+
+	// Subscription revenue
+	const subscriptionStats = await prisma.subscription.groupBy({
+		by: ['plan'],
+		where: {
+			plan: {
+				in: ['basic', 'premium'],
+			},
+		},
+		_count: {
+			id: true,
+		},
+		_sum: {
+			amount: true,
+		},
+	});
+
+	// Referral earnings
+	const referralStats = await prisma.referralEarning.groupBy({
+		by: ['status'],
+		_sum: {
+			amount: true,
+		},
+		_count: {
+			id: true,
+		},
+	});
+
+	// Recent transactions
+	const recentTransactions = await prisma.walletTransaction.findMany({
+		take: 10,
+		orderBy: {
+			createdAt: 'desc',
+		},
+		include: {
+			user: {
+				select: {
+					email: true,
+					name: true,
+				},
+			},
+		},
+	});
+
+	// Monthly revenue trend (last 6 months)
+	const sixMonthsAgo = new Date();
+	sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+
+	const monthlyRevenue = await prisma.$queryRaw<
+		Array<{ month: string; total: number }>
+	>`
+		SELECT 
+			TO_CHAR(DATE_TRUNC('month', "createdAt"), 'YYYY-MM') as month,
+			SUM(amount) as total
+		FROM "Revenue"
+		WHERE "createdAt" >= ${sixMonthsAgo}
+		GROUP BY DATE_TRUNC('month', "createdAt")
+		ORDER BY month DESC
+	`;
+
+	return {
+		revenue: {
+			total: totalRevenue._sum.amount || 0,
+			byType: revenueByType.map((r) => ({
+				type: r.type,
+				amount: r._sum.amount || 0,
+				count: r._count.id,
+			})),
+			monthly: monthlyRevenue,
+		},
+		withdrawals: {
+			byStatus: withdrawalStats.map((w) => ({
+				status: w.status,
+				amount: w._sum.amount || 0,
+				count: w._count.id,
+			})),
+			totalCompleted:
+				withdrawalStats.find((w) => w.status === 'completed')?._sum
+					.amount || 0,
+			totalPending:
+				withdrawalStats.find((w) => w.status === 'pending')?._sum
+					.amount || 0,
+		},
+		wallets: {
+			totalBalance: walletStats._sum.walletBalance || 0,
+			userCount: walletStats._count.id,
+		},
+		subscriptions: {
+			byPlan: subscriptionStats.map((s) => ({
+				plan: s.plan,
+				count: s._count.id,
+				revenue: s._sum.amount || 0,
+			})),
+			totalRevenue:
+				subscriptionStats.reduce(
+					(sum, s) => sum + (s._sum.amount || 0),
+					0
+				) || 0,
+		},
+		referrals: {
+			byStatus: referralStats.map((r) => ({
+				status: r.status,
+				amount: r._sum.amount || 0,
+				count: r._count.id,
+			})),
+			totalCredited:
+				referralStats.find((r) => r.status === 'credited')?._sum
+					.amount || 0,
+			totalPending:
+				referralStats.find((r) => r.status === 'pending')?._sum
+					.amount || 0,
+		},
+		recentTransactions: recentTransactions.map((t) => ({
+			id: t.id,
+			user: t.user.name || t.user.email,
+			amount: t.amount,
+			type: t.type,
+			description: t.description,
+			createdAt: t.createdAt,
+		})),
+	};
+}
+
+// Get audit trail for financial records
+export async function getAuditTrail(limit: number = 50) {
+	const auditRecords = await prisma.$queryRaw<
+		Array<{
+			date: Date;
+			type: string;
+			description: string;
+			amount: number;
+			user_email: string;
+		}>
+	>`
+		SELECT 
+			wt."createdAt" as date,
+			wt.type,
+			wt.description,
+			wt.amount,
+			u.email as user_email
+		FROM "WalletTransaction" wt
+		INNER JOIN "User" u ON u.id = wt."userId"
+		ORDER BY wt."createdAt" DESC
+		LIMIT ${limit}
+	`;
+
+	return auditRecords;
+}
