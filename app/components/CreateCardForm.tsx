@@ -32,7 +32,12 @@ export default function CreateCardForm() {
 			className='space-y-6'
 		>
 			<div className='space-y-2'>
-				<Label htmlFor='title'>Card Title *</Label>
+				<Label
+					htmlFor='title'
+					className='text-xs md:text-sm lg:text-base'
+				>
+					Card Title *
+				</Label>
 				<Input
 					id='title'
 					name='title'
@@ -40,22 +45,28 @@ export default function CreateCardForm() {
 					required
 					placeholder='My Christmas Wishes 2025'
 					disabled={isLoading}
-					className='h-12'
+					className='h-9 md:h-10 lg:h-12 text-xs md:text-sm lg:text-base'
 				/>
 			</div>
 
 			<div className='space-y-2'>
-				<Label htmlFor='description'>Description (Optional)</Label>
+				<Label
+					htmlFor='description'
+					className='text-xs md:text-sm lg:text-base'
+				>
+					Description (Optional)
+				</Label>
 				<Textarea
 					id='description'
 					name='description'
 					rows={4}
 					placeholder='A little message for those who want to bless me this Christmas...'
 					disabled={isLoading}
+					className='text-xs md:text-sm lg:text-base'
 				/>
 			</div>
 
-			<div className='flex gap-3'>
+			<div className='flex gap-2 md:gap-3'>
 				<Button
 					type='button'
 					onClick={() => router.back()}

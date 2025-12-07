@@ -128,15 +128,15 @@ export default function PricingPage({
 			<div className='container mx-auto px-4 py-16 md:py-24 relative z-10'>
 				{/* Header */}
 				<div className='text-center mb-12 md:mb-16'>
-					<Badge className='mb-4 bg-christmas-red text-white border-christmas-red/20 hover:bg-christmas-red/90'>
+					<Badge className='mb-4 bg-christmas-red text-white border-christmas-red/20 hover:bg-christmas-red/90 text-xs md:text-sm'>
 						🎄 Holiday Special
 					</Badge>
-					<h1 className='text-4xl md:text-5xl lg:text-6xl font-bold mb-4 text-balance'>
+					<h1 className='text-2xl md:text-3xl lg:text-4xl xl:text-5xl 2xl:text-6xl font-bold mb-4 text-balance'>
 						Choose Your{' '}
 						<span className='text-christmas-red'>Promise Card</span>{' '}
 						Plan
 					</h1>
-					<p className='text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto text-pretty'>
+					<p className='text-sm md:text-base lg:text-lg xl:text-xl text-muted-foreground max-w-2xl mx-auto text-pretty'>
 						Select the perfect plan to manage your promises and
 						commitments this festive season
 					</p>

@@ -52,16 +52,16 @@ export default function DashboardContent({ user }: { user: UserWithCards }) {
 				<div className='container mx-auto px-4 py-4'>
 					<div className='flex flex-col md:flex-row justify-between items-start md:items-center gap-4'>
 						<div className='flex items-center gap-3'>
-							<div className='h-12 w-12 rounded-full bg-accent/20 flex items-center justify-center'>
-								<Gift className='h-6 w-6 text-accent' />
+							<div className='h-10 w-10 md:h-12 md:w-12 rounded-full bg-accent/20 flex items-center justify-center'>
+								<Gift className='h-5 w-5 md:h-6 md:w-6 text-accent' />
 							</div>
 							<div>
-								<h1 className='text-2xl font-serif font-bold text-white flex items-center gap-2'>
+								<h1 className='text-lg md:text-xl lg:text-2xl font-serif font-bold text-white flex items-center gap-2'>
 									{user.name
 										? `${user.name}'s Cards`
 										: 'My Christmas Cards'}
 								</h1>
-								<p className='text-white/70 text-sm'>
+								<p className='text-white/70 text-xs md:text-sm'>
 									{user.email}
 								</p>
 							</div>
@@ -126,13 +126,13 @@ export default function DashboardContent({ user }: { user: UserWithCards }) {
 					<Link href='/card/create'>
 						<Card className='border-dashed border-2 border-accent/40 bg-white/5 backdrop-blur-sm hover:bg-white/10 hover:border-accent transition-all cursor-pointer h-full min-h-[280px] flex flex-col items-center justify-center group'>
 							<CardContent className='flex flex-col items-center justify-center text-center p-8'>
-								<div className='h-16 w-16 rounded-full bg-accent/20 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform'>
-									<Plus className='h-8 w-8 text-accent' />
+								<div className='h-12 w-12 md:h-16 md:w-16 rounded-full bg-accent/20 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform'>
+									<Plus className='h-6 w-6 md:h-8 md:w-8 text-accent' />
 								</div>
-								<h3 className='text-xl font-semibold text-white mb-2'>
+								<h3 className='text-base md:text-lg lg:text-xl font-semibold text-white mb-2'>
 									Create New Card
 								</h3>
-								<p className='text-white/70'>
+								<p className='text-white/70 text-xs md:text-sm'>
 									Start your wish list
 								</p>
 							</CardContent>
@@ -147,13 +147,13 @@ export default function DashboardContent({ user }: { user: UserWithCards }) {
 						>
 							<CardHeader className='pb-4'>
 								<div className='flex justify-between items-start gap-2'>
-									<CardTitle className='text-xl font-serif line-clamp-1'>
+									<CardTitle className='text-base md:text-lg lg:text-xl font-serif line-clamp-1'>
 										{card.title}
 									</CardTitle>
-									<Sparkles className='h-5 w-5 text-accent shrink-0' />
+									<Sparkles className='h-4 w-4 md:h-5 md:w-5 text-accent shrink-0' />
 								</div>
 								{card.description && (
-									<CardDescription className='line-clamp-2'>
+									<CardDescription className='line-clamp-2 text-xs md:text-sm'>
 										{card.description}
 									</CardDescription>
 								)}
@@ -163,31 +163,31 @@ export default function DashboardContent({ user }: { user: UserWithCards }) {
 									<Button
 										asChild
 										variant='outline'
-										className='w-full'
+										className='w-full h-9 md:h-10 text-xs md:text-sm'
 									>
 										<Link href={`/card/${card.id}/edit`}>
-											<Edit className='mr-2 h-4 w-4' />
+											<Edit className='mr-1 md:mr-2 h-3 w-3 md:h-4 md:w-4' />
 											Edit Card
 										</Link>
 									</Button>
 									<Button
 										asChild
-										className='w-full bg-gradient-to-r from-primary to-secondary hover:from-primary/90 hover:to-secondary/90'
+										className='w-full h-9 md:h-10 text-xs md:text-sm bg-gradient-to-r from-primary to-secondary hover:from-primary/90 hover:to-secondary/90'
 									>
 										<Link href={`/c/${card.shareCode}`}>
-											<Share2 className='mr-2 h-4 w-4' />
+											<Share2 className='mr-1 md:mr-2 h-3 w-3 md:h-4 md:w-4' />
 											View Public Card
 										</Link>
 									</Button>
 								</div>
 								<Separator />
-								<div className='flex items-center justify-between text-sm'>
+								<div className='flex items-center justify-between text-xs md:text-sm'>
 									<span className='text-muted-foreground'>
 										Share Code:
 									</span>
 									<Badge
 										variant='secondary'
-										className='font-mono'
+										className='font-mono text-xs'
 									>
 										{card.shareCode}
 									</Badge>
@@ -200,22 +200,23 @@ export default function DashboardContent({ user }: { user: UserWithCards }) {
 				{user.cards.length === 0 && (
 					<Card className='border-accent/20 shadow-2xl col-span-full'>
 						<CardContent className='py-16 text-center'>
-							<div className='text-6xl mb-4'>🎅</div>
-							<h2 className='text-2xl font-serif font-bold mb-2'>
+							<div className='text-4xl md:text-5xl lg:text-6xl mb-4'>
+								🎅
+							</div>
+							<h2 className='text-lg md:text-xl lg:text-2xl font-serif font-bold mb-2'>
 								No cards yet!
 							</h2>
-							<p className='text-muted-foreground mb-6 max-w-md mx-auto'>
+							<p className='text-muted-foreground mb-6 max-w-md mx-auto text-xs md:text-sm lg:text-base'>
 								Create your first Christmas Promise Card and
 								start sharing your wishes with friends and
 								family!
 							</p>
 							<Button
 								asChild
-								size='lg'
-								className='bg-gradient-to-r from-primary to-secondary hover:from-primary/90 hover:to-secondary/90'
+								className='bg-gradient-to-r from-primary to-secondary hover:from-primary/90 hover:to-secondary/90 h-10 md:h-11 lg:h-12 text-sm md:text-base'
 							>
 								<Link href='/card/create'>
-									<Plus className='mr-2 h-5 w-5' />
+									<Plus className='mr-1 md:mr-2 h-4 w-4 md:h-5 md:w-5' />
 									Create Your First Card
 								</Link>
 							</Button>
@@ -225,7 +226,7 @@ export default function DashboardContent({ user }: { user: UserWithCards }) {
 			</main>
 
 			{/* Footer */}
-			<footer className='mt-12 py-6 text-center text-white/50 text-4xl'>
+			<footer className='mt-12 py-6 text-center text-white/50 text-2xl md:text-3xl lg:text-4xl'>
 				❄️ ⛄ 🎄 🎅 ❄️
 			</footer>
 		</div>

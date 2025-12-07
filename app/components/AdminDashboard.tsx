@@ -159,16 +159,20 @@ export default function AdminDashboard({ email }: { email: string }) {
 		<div className='min-h-screen bg-linear-to-br from-blue-50 via-white to-purple-50 py-8 px-4'>
 			<div className='max-w-7xl mx-auto'>
 				<div className='mb-8'>
-					<h1 className='text-3xl font-bold bg-linear-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-2'>
+					<h1 className='text-xl md:text-2xl lg:text-3xl font-bold bg-linear-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-2'>
 						Admin Dashboard
 					</h1>
-					<p className='text-gray-600'>Logged in as: {email}</p>
+					<p className='text-gray-600 text-xs md:text-sm lg:text-base'>
+						Logged in as: {email}
+					</p>
 				</div>
 
 				{isLoading ? (
 					<div className='text-center py-12'>
 						<div className='animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto'></div>
-						<p className='mt-4 text-gray-600'>Loading data...</p>
+						<p className='mt-4 text-gray-600 text-xs md:text-sm'>
+							Loading data...
+						</p>
 					</div>
 				) : (
 					<Tabs
@@ -176,12 +180,30 @@ export default function AdminDashboard({ email }: { email: string }) {
 						className='space-y-6'
 					>
 						<TabsList className='grid w-full grid-cols-4'>
-							<TabsTrigger value='overview'>Overview</TabsTrigger>
-							<TabsTrigger value='withdrawals'>
+							<TabsTrigger
+								value='overview'
+								className='text-xs md:text-sm'
+							>
+								Overview
+							</TabsTrigger>
+							<TabsTrigger
+								value='withdrawals'
+								className='text-xs md:text-sm'
+							>
 								Withdrawals
 							</TabsTrigger>
-							<TabsTrigger value='revenue'>Revenue</TabsTrigger>
-							<TabsTrigger value='audit'>Audit Trail</TabsTrigger>
+							<TabsTrigger
+								value='revenue'
+								className='text-xs md:text-sm'
+							>
+								Revenue
+							</TabsTrigger>
+							<TabsTrigger
+								value='audit'
+								className='text-xs md:text-sm'
+							>
+								Audit Trail
+							</TabsTrigger>
 						</TabsList>
 
 						{/* Financial Overview Tab */}
@@ -193,7 +215,7 @@ export default function AdminDashboard({ email }: { email: string }) {
 								{/* Total Revenue */}
 								<Card>
 									<CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
-										<CardTitle className='text-sm font-medium'>
+										<CardTitle className='text-xs md:text-sm font-medium'>
 											Total Revenue
 										</CardTitle>
 										<svg
@@ -204,20 +226,20 @@ export default function AdminDashboard({ email }: { email: string }) {
 											strokeLinecap='round'
 											strokeLinejoin='round'
 											strokeWidth='2'
-											className='h-4 w-4 text-muted-foreground'
+											className='h-3 w-3 md:h-4 md:w-4 text-muted-foreground'
 										>
 											<path d='M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6' />
 										</svg>
 									</CardHeader>
 									<CardContent>
-										<div className='text-2xl font-bold'>
+										<div className='text-lg md:text-xl lg:text-2xl font-bold'>
 											₦
 											{(
 												financialStats?.revenue.total ||
 												0
 											).toLocaleString()}
 										</div>
-										<p className='text-xs text-muted-foreground'>
+										<p className='text-[10px] md:text-xs text-muted-foreground'>
 											All-time platform revenue
 										</p>
 									</CardContent>

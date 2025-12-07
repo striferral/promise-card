@@ -13,11 +13,11 @@ export default function AdminPage() {
 		<div className='min-h-screen bg-gradient-to-br from-primary via-secondary to-primary flex items-center justify-center p-4'>
 			<Card className='max-w-md w-full border-accent/20'>
 				<CardHeader className='text-center'>
-					<Shield className='h-12 w-12 mx-auto mb-3 text-accent' />
-					<CardTitle className='text-4xl font-serif bg-gradient-to-r from-accent via-primary to-secondary bg-clip-text text-transparent'>
+					<Shield className='h-10 w-10 md:h-12 md:w-12 mx-auto mb-3 text-accent' />
+					<CardTitle className='text-2xl md:text-3xl lg:text-4xl font-serif bg-gradient-to-r from-accent via-primary to-secondary bg-clip-text text-transparent'>
 						Admin Portal
 					</CardTitle>
-					<CardDescription className='text-base mt-2'>
+					<CardDescription className='text-sm md:text-base mt-2'>
 						Manage withdrawal requests
 					</CardDescription>
 				</CardHeader>
