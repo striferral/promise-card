@@ -78,8 +78,9 @@ type AuditRecord = {
 
 export default function AdminDashboard({ email }: { email: string }) {
 	const [withdrawals, setWithdrawals] = useState<Withdrawal[]>([]);
-	const [financialStats, setFinancialStats] =
-		useState<FinancialStats | null>(null);
+	const [financialStats, setFinancialStats] = useState<FinancialStats | null>(
+		null
+	);
 	const [auditTrail, setAuditTrail] = useState<AuditRecord[]>([]);
 	const [isLoading, setIsLoading] = useState(true);
 	const [processingId, setProcessingId] = useState<string | null>(null);
@@ -170,7 +171,10 @@ export default function AdminDashboard({ email }: { email: string }) {
 						<p className='mt-4 text-gray-600'>Loading data...</p>
 					</div>
 				) : (
-					<Tabs defaultValue='overview' className='space-y-6'>
+					<Tabs
+						defaultValue='overview'
+						className='space-y-6'
+					>
 						<TabsList className='grid w-full grid-cols-4'>
 							<TabsTrigger value='overview'>Overview</TabsTrigger>
 							<TabsTrigger value='withdrawals'>
@@ -181,7 +185,10 @@ export default function AdminDashboard({ email }: { email: string }) {
 						</TabsList>
 
 						{/* Financial Overview Tab */}
-						<TabsContent value='overview' className='space-y-6'>
+						<TabsContent
+							value='overview'
+							className='space-y-6'
+						>
 							<div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4'>
 								{/* Total Revenue */}
 								<Card>
@@ -251,8 +258,8 @@ export default function AdminDashboard({ email }: { email: string }) {
 											).toLocaleString()}
 										</div>
 										<p className='text-xs text-muted-foreground'>
-											{financialStats?.wallets.userCount ||
-												0}{' '}
+											{financialStats?.wallets
+												.userCount || 0}{' '}
 											users
 										</p>
 									</CardContent>
@@ -275,7 +282,11 @@ export default function AdminDashboard({ email }: { email: string }) {
 											className='h-4 w-4 text-muted-foreground'
 										>
 											<path d='M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2' />
-											<circle cx='9' cy='7' r='4' />
+											<circle
+												cx='9'
+												cy='7'
+												r='4'
+											/>
 											<path d='M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75' />
 										</svg>
 									</CardHeader>
@@ -316,7 +327,11 @@ export default function AdminDashboard({ email }: { email: string }) {
 											className='h-4 w-4 text-muted-foreground'
 										>
 											<path d='M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2' />
-											<circle cx='9' cy='7' r='4' />
+											<circle
+												cx='9'
+												cy='7'
+												r='4'
+											/>
 											<path d='M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75' />
 										</svg>
 									</CardHeader>
@@ -462,256 +477,289 @@ export default function AdminDashboard({ email }: { email: string }) {
 						</TabsContent>
 
 						{/* Withdrawals Tab */}
-						<TabsContent value='withdrawals' className='space-y-8'>
-						{/* Pending Withdrawals */}
-						<div>
-							<h2 className='text-2xl font-bold text-gray-900 mb-4'>
-								Pending Withdrawals ({pendingWithdrawals.length}
-								)
-							</h2>
-							{pendingWithdrawals.length === 0 ? (
-								<div className='bg-white rounded-lg shadow p-8 text-center text-gray-500'>
-									No pending withdrawal requests
-								</div>
-							) : (
-								<div className='space-y-4'>
-									{pendingWithdrawals.map((withdrawal) => (
-										<div
-											key={withdrawal.id}
-											className='bg-white rounded-lg shadow-lg p-6 border-l-4 border-yellow-500'
-										>
-											<div className='grid grid-cols-1 md:grid-cols-2 gap-4 mb-4'>
-												<div>
-													<h3 className='font-semibold text-gray-900 mb-2'>
-														User Details
-													</h3>
-													<p className='text-sm text-gray-600'>
-														Name:{' '}
-														{withdrawal.user.name ||
-															'N/A'}
-													</p>
-													<p className='text-sm text-gray-600'>
-														Email:{' '}
-														{withdrawal.user.email}
-													</p>
-													<p className='text-sm text-gray-600'>
-														Current Balance: ₦
-														{withdrawal.user.walletBalance.toFixed(
-															2
-														)}
-													</p>
-												</div>
-												<div>
-													<h3 className='font-semibold text-gray-900 mb-2'>
-														Withdrawal Details
-													</h3>
-													<p className='text-sm text-gray-600'>
-														Amount: ₦
-														{withdrawal.amount.toFixed(
-															2
-														)}
-													</p>
-													<p className='text-sm text-gray-600'>
-														Bank:{' '}
-														{withdrawal.bankName}
-													</p>
-													<p className='text-sm text-gray-600'>
-														Account:{' '}
-														{
-															withdrawal.accountNumber
-														}
-													</p>
-													<p className='text-sm text-gray-600'>
-														Account Name:{' '}
-														{withdrawal.accountName}
-													</p>
-													<p className='text-sm text-gray-500 mt-2'>
-														Requested:{' '}
-														{new Date(
-															withdrawal.requestedAt
-														).toLocaleString()}
-													</p>
-												</div>
-											</div>
+						<TabsContent
+							value='withdrawals'
+							className='space-y-8'
+						>
+							{/* Pending Withdrawals */}
+							<div>
+								<h2 className='text-2xl font-bold text-gray-900 mb-4'>
+									Pending Withdrawals (
+									{pendingWithdrawals.length})
+								</h2>
+								{pendingWithdrawals.length === 0 ? (
+									<div className='bg-white rounded-lg shadow p-8 text-center text-gray-500'>
+										No pending withdrawal requests
+									</div>
+								) : (
+									<div className='space-y-4'>
+										{pendingWithdrawals.map(
+											(withdrawal) => (
+												<div
+													key={withdrawal.id}
+													className='bg-white rounded-lg shadow-lg p-6 border-l-4 border-yellow-500'
+												>
+													<div className='grid grid-cols-1 md:grid-cols-2 gap-4 mb-4'>
+														<div>
+															<h3 className='font-semibold text-gray-900 mb-2'>
+																User Details
+															</h3>
+															<p className='text-sm text-gray-600'>
+																Name:{' '}
+																{withdrawal.user
+																	.name ||
+																	'N/A'}
+															</p>
+															<p className='text-sm text-gray-600'>
+																Email:{' '}
+																{
+																	withdrawal
+																		.user
+																		.email
+																}
+															</p>
+															<p className='text-sm text-gray-600'>
+																Current Balance:
+																₦
+																{withdrawal.user.walletBalance.toFixed(
+																	2
+																)}
+															</p>
+														</div>
+														<div>
+															<h3 className='font-semibold text-gray-900 mb-2'>
+																Withdrawal
+																Details
+															</h3>
+															<p className='text-sm text-gray-600'>
+																Amount: ₦
+																{withdrawal.amount.toFixed(
+																	2
+																)}
+															</p>
+															<p className='text-sm text-gray-600'>
+																Bank:{' '}
+																{
+																	withdrawal.bankName
+																}
+															</p>
+															<p className='text-sm text-gray-600'>
+																Account:{' '}
+																{
+																	withdrawal.accountNumber
+																}
+															</p>
+															<p className='text-sm text-gray-600'>
+																Account Name:{' '}
+																{
+																	withdrawal.accountName
+																}
+															</p>
+															<p className='text-sm text-gray-500 mt-2'>
+																Requested:{' '}
+																{new Date(
+																	withdrawal.requestedAt
+																).toLocaleString()}
+															</p>
+														</div>
+													</div>
 
-											{rejectingId === withdrawal.id ? (
-												<div className='space-y-3'>
-													<textarea
-														value={rejectReason}
-														onChange={(e) =>
-															setRejectReason(
-																e.target.value
-															)
-														}
-														placeholder='Enter reason for rejection...'
-														className='w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500'
-														rows={3}
-													/>
-													<div className='flex gap-2'>
-														<button
-															onClick={() =>
-																handleReject(
+													{rejectingId ===
+													withdrawal.id ? (
+														<div className='space-y-3'>
+															<textarea
+																value={
+																	rejectReason
+																}
+																onChange={(e) =>
+																	setRejectReason(
+																		e.target
+																			.value
+																	)
+																}
+																placeholder='Enter reason for rejection...'
+																className='w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500'
+																rows={3}
+															/>
+															<div className='flex gap-2'>
+																<button
+																	onClick={() =>
+																		handleReject(
+																			withdrawal.id
+																		)
+																	}
+																	disabled={
+																		processingId ===
+																		withdrawal.id
+																	}
+																	className='flex-1 bg-red-600 text-white py-2 px-4 rounded-lg hover:bg-red-700 disabled:opacity-50'
+																>
+																	Confirm
+																	Rejection
+																</button>
+																<button
+																	onClick={() => {
+																		setRejectingId(
+																			null
+																		);
+																		setRejectReason(
+																			''
+																		);
+																	}}
+																	className='flex-1 bg-gray-300 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-400'
+																>
+																	Cancel
+																</button>
+															</div>
+														</div>
+													) : (
+														<div className='flex gap-2'>
+															<button
+																onClick={() =>
+																	handleApprove(
+																		withdrawal.id
+																	)
+																}
+																disabled={
+																	processingId ===
 																	withdrawal.id
-																)
-															}
-															disabled={
-																processingId ===
-																withdrawal.id
-															}
-															className='flex-1 bg-red-600 text-white py-2 px-4 rounded-lg hover:bg-red-700 disabled:opacity-50'
-														>
-															Confirm Rejection
-														</button>
-														<button
-															onClick={() => {
-																setRejectingId(
-																	null
-																);
-																setRejectReason(
-																	''
-																);
-															}}
-															className='flex-1 bg-gray-300 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-400'
-														>
-															Cancel
-														</button>
+																}
+																className='flex-1 bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 disabled:opacity-50 flex items-center justify-center gap-2'
+															>
+																{processingId ===
+																withdrawal.id ? (
+																	<>
+																		<div className='animate-spin rounded-full h-4 w-4 border-b-2 border-white'></div>
+																		Processing...
+																	</>
+																) : (
+																	'✓ Approve'
+																)}
+															</button>
+															<button
+																onClick={() =>
+																	setRejectingId(
+																		withdrawal.id
+																	)
+																}
+																disabled={
+																	processingId ===
+																	withdrawal.id
+																}
+																className='flex-1 bg-red-600 text-white py-2 px-4 rounded-lg hover:bg-red-700 disabled:opacity-50'
+															>
+																✗ Reject
+															</button>
+														</div>
+													)}
+												</div>
+											)
+										)}
+									</div>
+								)}
+							</div>
+
+							{/* Processed Withdrawals */}
+							<div>
+								<h2 className='text-2xl font-bold text-gray-900 mb-4'>
+									Processed Withdrawals (
+									{processedWithdrawals.length})
+								</h2>
+								{processedWithdrawals.length === 0 ? (
+									<div className='bg-white rounded-lg shadow p-8 text-center text-gray-500'>
+										No processed withdrawals yet
+									</div>
+								) : (
+									<div className='space-y-4'>
+										{processedWithdrawals.map(
+											(withdrawal) => (
+												<div
+													key={withdrawal.id}
+													className={`bg-white rounded-lg shadow p-6 border-l-4 ${
+														withdrawal.status ===
+														'completed'
+															? 'border-green-500'
+															: 'border-red-500'
+													}`}
+												>
+													<div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
+														<div>
+															<p className='text-sm text-gray-600'>
+																User:{' '}
+																{withdrawal.user
+																	.name ||
+																	'N/A'}
+															</p>
+															<p className='text-sm text-gray-600'>
+																{
+																	withdrawal
+																		.user
+																		.email
+																}
+															</p>
+														</div>
+														<div>
+															<p className='text-sm text-gray-600'>
+																Amount: ₦
+																{withdrawal.amount.toFixed(
+																	2
+																)}
+															</p>
+															<p className='text-sm text-gray-600'>
+																Bank:{' '}
+																{
+																	withdrawal.bankName
+																}
+															</p>
+															<p className='text-sm text-gray-600'>
+																Account:{' '}
+																{
+																	withdrawal.accountNumber
+																}
+															</p>
+														</div>
+														<div>
+															<span
+																className={`inline-block px-3 py-1 rounded-full text-sm font-semibold ${
+																	withdrawal.status ===
+																	'completed'
+																		? 'bg-green-100 text-green-800'
+																		: 'bg-red-100 text-red-800'
+																}`}
+															>
+																{withdrawal.status.toUpperCase()}
+															</span>
+															{withdrawal.failureReason && (
+																<p className='text-sm text-red-600 mt-2'>
+																	Reason:{' '}
+																	{
+																		withdrawal.failureReason
+																	}
+																</p>
+															)}
+															<p className='text-sm text-gray-500 mt-2'>
+																Processed:{' '}
+																{withdrawal.processedAt
+																	? new Date(
+																			withdrawal.processedAt
+																	  ).toLocaleString()
+																	: 'N/A'}
+															</p>
+														</div>
 													</div>
 												</div>
-											) : (
-												<div className='flex gap-2'>
-													<button
-														onClick={() =>
-															handleApprove(
-																withdrawal.id
-															)
-														}
-														disabled={
-															processingId ===
-															withdrawal.id
-														}
-														className='flex-1 bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 disabled:opacity-50 flex items-center justify-center gap-2'
-													>
-														{processingId ===
-														withdrawal.id ? (
-															<>
-																<div className='animate-spin rounded-full h-4 w-4 border-b-2 border-white'></div>
-																Processing...
-															</>
-														) : (
-															'✓ Approve'
-														)}
-													</button>
-													<button
-														onClick={() =>
-															setRejectingId(
-																withdrawal.id
-															)
-														}
-														disabled={
-															processingId ===
-															withdrawal.id
-														}
-														className='flex-1 bg-red-600 text-white py-2 px-4 rounded-lg hover:bg-red-700 disabled:opacity-50'
-													>
-														✗ Reject
-													</button>
-												</div>
-											)}
-										</div>
-									))}
-								</div>
-							)}
-						</div>
-
-						{/* Processed Withdrawals */}
-						<div>
-							<h2 className='text-2xl font-bold text-gray-900 mb-4'>
-								Processed Withdrawals (
-								{processedWithdrawals.length})
-							</h2>
-							{processedWithdrawals.length === 0 ? (
-								<div className='bg-white rounded-lg shadow p-8 text-center text-gray-500'>
-									No processed withdrawals yet
-								</div>
-							) : (
-								<div className='space-y-4'>
-									{processedWithdrawals.map((withdrawal) => (
-										<div
-											key={withdrawal.id}
-											className={`bg-white rounded-lg shadow p-6 border-l-4 ${
-												withdrawal.status ===
-												'completed'
-													? 'border-green-500'
-													: 'border-red-500'
-											}`}
-										>
-											<div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
-												<div>
-													<p className='text-sm text-gray-600'>
-														User:{' '}
-														{withdrawal.user.name ||
-															'N/A'}
-													</p>
-													<p className='text-sm text-gray-600'>
-														{withdrawal.user.email}
-													</p>
-												</div>
-												<div>
-													<p className='text-sm text-gray-600'>
-														Amount: ₦
-														{withdrawal.amount.toFixed(
-															2
-														)}
-													</p>
-													<p className='text-sm text-gray-600'>
-														Bank:{' '}
-														{withdrawal.bankName}
-													</p>
-													<p className='text-sm text-gray-600'>
-														Account:{' '}
-														{
-															withdrawal.accountNumber
-														}
-													</p>
-												</div>
-												<div>
-													<span
-														className={`inline-block px-3 py-1 rounded-full text-sm font-semibold ${
-															withdrawal.status ===
-															'completed'
-																? 'bg-green-100 text-green-800'
-																: 'bg-red-100 text-red-800'
-														}`}
-													>
-														{withdrawal.status.toUpperCase()}
-													</span>
-													{withdrawal.failureReason && (
-														<p className='text-sm text-red-600 mt-2'>
-															Reason:{' '}
-															{
-																withdrawal.failureReason
-															}
-														</p>
-													)}
-													<p className='text-sm text-gray-500 mt-2'>
-														Processed:{' '}
-														{withdrawal.processedAt
-															? new Date(
-																	withdrawal.processedAt
-															  ).toLocaleString()
-															: 'N/A'}
-													</p>
-												</div>
-											</div>
-										</div>
-									))}
-								</div>
-							)}
-						</div>
+											)
+										)}
+									</div>
+								)}
+							</div>
 						</TabsContent>
 
 						{/* Revenue Details Tab */}
-						<TabsContent value='revenue' className='space-y-6'>
+						<TabsContent
+							value='revenue'
+							className='space-y-6'
+						>
 							<Card>
 								<CardHeader>
 									<CardTitle>
@@ -798,9 +846,7 @@ export default function AdminDashboard({ email }: { email: string }) {
 																	Plan
 																</p>
 																<p className='text-sm text-gray-600'>
-																	{
-																		plan.count
-																	}{' '}
+																	{plan.count}{' '}
 																	active
 																	subscriptions
 																</p>
@@ -907,7 +953,10 @@ export default function AdminDashboard({ email }: { email: string }) {
 						</TabsContent>
 
 						{/* Audit Trail Tab */}
-						<TabsContent value='audit' className='space-y-6'>
+						<TabsContent
+							value='audit'
+							className='space-y-6'
+						>
 							<Card>
 								<CardHeader>
 									<CardTitle>
@@ -1022,7 +1071,11 @@ export default function AdminDashboard({ email }: { email: string }) {
 											strokeWidth='2'
 											className='h-5 w-5 text-blue-600 mt-0.5'
 										>
-											<circle cx='12' cy='12' r='10' />
+											<circle
+												cx='12'
+												cy='12'
+												r='10'
+											/>
 											<path d='M12 16v-4M12 8h.01' />
 										</svg>
 										<div>
@@ -1030,12 +1083,11 @@ export default function AdminDashboard({ email }: { email: string }) {
 												Audit-Ready Records
 											</h4>
 											<p className='text-sm text-blue-800'>
-												All transactions are
-												permanently logged with
-												timestamps, user information,
-												and before/after balance
-												snapshots. This data can be
-												queried directly from the
+												All transactions are permanently
+												logged with timestamps, user
+												information, and before/after
+												balance snapshots. This data can
+												be queried directly from the
 												database for accounting and
 												compliance purposes.
 											</p>

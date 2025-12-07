@@ -249,7 +249,7 @@ export async function getFinancialStats() {
 	const monthlyRevenue = await prisma.$queryRaw<
 		Array<{ month: string; total: number }>
 	>`
-		SELECT 
+		SELECT
 			TO_CHAR(DATE_TRUNC('month', "createdAt"), 'YYYY-MM') as month,
 			SUM(amount) as total
 		FROM "Revenue"
@@ -332,7 +332,7 @@ export async function getAuditTrail(limit: number = 50) {
 			user_email: string;
 		}>
 	>`
-		SELECT 
+		SELECT
 			wt."createdAt" as date,
 			wt.type,
 			wt.description,
