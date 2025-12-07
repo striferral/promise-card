@@ -1,0 +1,153 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id                String   @id @default(cuid())
+  email             String   @unique
+  name              String?
+  accountName       String?
+  accountNumber     String?
+  bankName          String?
+  bankCode          String?
+  profession        String?
+  walletBalance     Float    @default(0) // Balance in Naira
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  accountDetailsSet Boolean  @default(false)
+
+  cards             Card[]
+  tokens            MagicToken[]
+  transactions      WalletTransaction[]
+  withdrawals       Withdrawal[]
+}
+
+model MagicToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  email     String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [email], references: [email], onDelete: Cascade)
+
+  @@index([email])
+  @@index([token])
+}
+
+model Card {
+  id              String   @id @default(cuid())
+  title           String
+  description     String?
+  shareCode       String   @unique
+  promisesVisible Boolean  @default(true) // Toggle for public/private promises
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  items           CardItem[]
+
+  @@index([userId])
+  @@index([shareCode])
+}
+
+model CardItem {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  quantity    Int      @default(1)
+  itemType    String   // "cash", "shoes", "bag", "clothing", "other"
+  createdAt   DateTime @default(now())
+
+  cardId      String
+  card        Card     @relation(fields: [cardId], references: [id], onDelete: Cascade)
+
+  promises    Promise[]
+
+  @@index([cardId])
+}
+
+model Promise {
+  id              String   @id @default(cuid())
+  promiserName    String
+  promiserEmail   String   @default("unverified@placeholder.com")
+  promiserContact String?
+  amount          String?  // For cash promises or general description
+  message         String?
+  verified        Boolean  @default(false)
+  verifiedAt      DateTime?
+  fulfilled       Boolean  @default(false)
+  fulfilledAt     DateTime?
+  paymentReference String? // Paystack payment reference
+  createdAt       DateTime @default(now())
+
+  itemId          String
+  item            CardItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@index([itemId])
+  @@index([promiserEmail])
+}
+
+model PromiseVerificationToken {
+  id         String   @id @default(cuid())
+  token      String   @unique
+  promiseId  String   @unique
+  email      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+
+  @@index([token])
+  @@index([email])
+}
+
+model WalletTransaction {
+  id              String   @id @default(cuid())
+  userId          String
+  amount          Float    // Amount in Naira
+  type            String   // "credit" or "debit"
+  description     String
+  reference       String?  // Payment reference
+  balanceBefore   Float
+  balanceAfter    Float
+  createdAt       DateTime @default(now())
+
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([createdAt])
+}
+
+model Withdrawal {
+  id              String   @id @default(cuid())
+  userId          String
+  amount          Float    // Amount requested
+  status          String   @default("pending") // "pending", "processing", "completed", "failed"
+  accountName     String
+  accountNumber   String
+  bankName        String
+  bankCode        String
+  reference       String?  // Paystack transfer reference
+  failureReason   String?
+  requestedAt     DateTime @default(now())
+  processedAt     DateTime?
+  completedAt     DateTime?
+
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status])
+}
+
+model Profession {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+
+  @@index([name])
+}
