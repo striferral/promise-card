@@ -103,12 +103,21 @@ export async function requestWithdrawal(userId: string, amount: number) {
 		return { error: 'Please set up your account details first' };
 	}
 
-	if (amount < 2000) {
-		return { error: 'Minimum withdrawal amount is ₦2,000' };
+	const WITHDRAWAL_FEE = 100; // ₦100 withdrawal fee
+	const MIN_WITHDRAWAL = 2000; // Minimum ₦2,000 withdrawal
+
+	if (amount < MIN_WITHDRAWAL) {
+		return {
+			error: `Minimum withdrawal amount is ₦${MIN_WITHDRAWAL.toLocaleString()}`,
+		};
 	}
 
-	if (user.walletBalance < amount) {
-		return { error: 'Insufficient balance' };
+	const totalDeduction = amount + WITHDRAWAL_FEE;
+
+	if (user.walletBalance < totalDeduction) {
+		return {
+			error: `Insufficient balance. You need ₦${totalDeduction.toLocaleString()} (₦${amount.toLocaleString()} + ₦${WITHDRAWAL_FEE} fee)`,
+		};
 	}
 
 	// Create withdrawal request
@@ -124,17 +133,17 @@ export async function requestWithdrawal(userId: string, amount: number) {
 		},
 	});
 
-	// Debit wallet
-	await prisma.user.update({
+	// Debit wallet (amount + fee)
+	const updatedUser = await prisma.user.update({
 		where: { id: userId },
 		data: {
 			walletBalance: {
-				decrement: amount,
+				decrement: totalDeduction,
 			},
 		},
 	});
 
-	// Record transaction
+	// Record withdrawal transaction
 	await prisma.walletTransaction.create({
 		data: {
 			userId,
@@ -143,7 +152,20 @@ export async function requestWithdrawal(userId: string, amount: number) {
 			description: `Withdrawal request #${withdrawal.id.slice(-8)}`,
 			reference: withdrawal.id,
 			balanceBefore: user.walletBalance,
-			balanceAfter: user.walletBalance - amount,
+			balanceAfter: updatedUser.walletBalance,
+		},
+	});
+
+	// Record withdrawal fee transaction
+	await prisma.walletTransaction.create({
+		data: {
+			userId,
+			amount: -WITHDRAWAL_FEE,
+			type: 'debit',
+			description: `Withdrawal fee for #${withdrawal.id.slice(-8)}`,
+			reference: `${withdrawal.id}_fee`,
+			balanceBefore: updatedUser.walletBalance + WITHDRAWAL_FEE,
+			balanceAfter: updatedUser.walletBalance,
 		},
 	});
 

@@ -1,7 +1,10 @@
 'use server';
 
 import { prisma } from '@/lib/db';
-import { sendPromiseVerificationEmail } from '@/lib/email';
+import {
+	sendPromiseVerificationEmail,
+	sendPromiseNotificationEmail,
+} from '@/lib/email';
 import crypto from 'crypto';
 
 export async function makePromise(itemId: string, formData: FormData) {
@@ -73,7 +76,16 @@ export async function makePromise(itemId: string, formData: FormData) {
 			item.card.user.email,
 			token
 		);
-		// eslint-disable-next-line @typescript-eslint/no-unused-vars
+
+		// Notify card owner about the new promise
+		await sendPromiseNotificationEmail(
+			item.card.user.email,
+			item.card.user.name || item.card.user.email,
+			promiserName,
+			promiserEmail,
+			item.name,
+			item.card.title
+		);
 	} catch (error) {
 		console.error('Email sending failed:', error);
 		// Delete the promise and token if email fails

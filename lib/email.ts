@@ -377,6 +377,118 @@ export async function sendFulfillmentNotificationEmail(
 	}
 }
 
+export async function sendPromiseNotificationEmail(
+	cardOwnerEmail: string,
+	cardOwnerName: string,
+	promiserName: string,
+	promiserEmail: string,
+	itemName: string,
+	cardTitle: string
+) {
+	const mailOptions = {
+		from: process.env.EMAIL_FROM,
+		to: cardOwnerEmail,
+		subject: '🎁 New Promise on Your Christmas Card!',
+		html: `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <style>
+            body {
+              font-family: Arial, sans-serif;
+              background-color: #f4f4f4;
+              margin: 0;
+              padding: 0;
+            }
+            .container {
+              max-width: 600px;
+              margin: 40px auto;
+              background-color: #ffffff;
+              border-radius: 10px;
+              overflow: hidden;
+              box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            }
+            .header {
+              background: linear-gradient(135deg, #c41e3a 0%, #165B33 100%);
+              padding: 40px 20px;
+              text-align: center;
+              color: white;
+            }
+            .header h1 {
+              margin: 0;
+              font-size: 28px;
+            }
+            .content {
+              padding: 40px 30px;
+            }
+            .content p {
+              color: #333;
+              font-size: 16px;
+              line-height: 1.6;
+              margin-bottom: 20px;
+            }
+            .info-box {
+              background-color: #f0f9ff;
+              border-left: 4px solid #165B33;
+              padding: 15px;
+              margin: 20px 0;
+            }
+            .footer {
+              padding: 20px;
+              text-align: center;
+              color: #999;
+              font-size: 12px;
+              background-color: #f9f9f9;
+            }
+            .celebration {
+              font-size: 50px;
+              text-align: center;
+              margin: 20px 0;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>🎁 New Promise!</h1>
+            </div>
+            <div class="content">
+              <div class="celebration">🎄 ✨ 🎅</div>
+              <p>Hi ${cardOwnerName}!</p>
+              <p>Great news! Someone just made a promise on your Christmas card!</p>
+
+              <div class="info-box">
+                <p><strong>Card:</strong> ${cardTitle}</p>
+                <p><strong>Item:</strong> ${itemName}</p>
+                <p><strong>Promised by:</strong> ${promiserName}</p>
+                <p><strong>Email:</strong> ${promiserEmail}</p>
+              </div>
+
+              <p>The promiser will receive a verification email. Once they verify, you'll be able to see their promise on your dashboard!</p>
+
+              <p style="margin-top: 30px;">
+                <a href="${process.env.NEXT_PUBLIC_APP_URL}/dashboard" style="display: inline-block; padding: 15px 40px; background: linear-gradient(135deg, #c41e3a 0%, #165B33 100%); color: white; text-decoration: none; border-radius: 50px; font-weight: bold;">
+                  View Your Dashboard
+                </a>
+              </p>
+            </div>
+            <div class="footer">
+              <p>Merry Christmas! 🎄✨</p>
+            </div>
+          </div>
+        </body>
+      </html>
+    `,
+	};
+
+	try {
+		await transporter.sendMail(mailOptions);
+	} catch (error) {
+		console.error('Promise notification email error:', error);
+		// Don't throw - this is a non-critical notification
+	}
+}
+
 // Generic send email function
 export async function sendEmail(to: string, subject: string, html: string) {
 	const mailOptions = {

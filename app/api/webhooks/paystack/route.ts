@@ -56,15 +56,17 @@ export async function POST(req: NextRequest) {
 				},
 			});
 
-			// Credit card owner's wallet
+			// Credit card owner's wallet with 2% service charge deducted
 			const cardOwner = promise.item.card.user;
 			const amountInNaira = amount / 100; // Convert from kobo to naira
+			const serviceCharge = amountInNaira * 0.02; // 2% service charge
+			const amountAfterCharge = amountInNaira - serviceCharge; // Amount creator receives
 
 			const updatedUser = await prisma.user.update({
 				where: { id: cardOwner.id },
 				data: {
 					walletBalance: {
-						increment: amountInNaira,
+						increment: amountAfterCharge,
 					},
 				},
 			});
@@ -73,11 +75,16 @@ export async function POST(req: NextRequest) {
 			await prisma.walletTransaction.create({
 				data: {
 					userId: cardOwner.id,
-					amount: amountInNaira,
+					amount: amountAfterCharge,
 					type: 'credit',
-					description: `Payment for ${promise.item.name} from ${promise.promiserName}`,
+					description: `Payment for ${promise.item.name} from ${
+						promise.promiserName
+					} (₦${amountInNaira.toFixed(2)} - ₦${serviceCharge.toFixed(
+						2
+					)} service charge)`,
 					reference: reference,
-					balanceBefore: updatedUser.walletBalance - amountInNaira,
+					balanceBefore:
+						updatedUser.walletBalance - amountAfterCharge,
 					balanceAfter: updatedUser.walletBalance,
 				},
 			});

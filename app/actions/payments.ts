@@ -60,6 +60,7 @@ export async function initializePayment(promiseId: string) {
 					email: promise.promiserEmail, // Charge the promiser, not card owner
 					amount: Math.round(amount * 100), // Amount in kobo
 					reference: `promise_${promiseId}_${Date.now()}`,
+					bearer: 'account', // Payer bears all charges
 					metadata: {
 						promiseId,
 						promiserName: promise.promiserName,

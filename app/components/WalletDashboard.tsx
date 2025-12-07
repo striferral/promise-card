@@ -55,6 +55,21 @@ export default function WalletDashboard({ userId }: { userId: string }) {
 
 	useEffect(() => {
 		loadWalletData();
+
+		// Set up polling every 5 minutes (300000ms)
+		const pollInterval = setInterval(() => {
+			// Silently refresh balance and transactions without showing loading state
+			getWalletBalance(userId).then((res) => setBalance(res.balance));
+			getWalletTransactions(userId).then((res) =>
+				setTransactions(res.transactions)
+			);
+			getWithdrawals(userId).then((res) =>
+				setWithdrawals(res.withdrawals)
+			);
+		}, 5 * 60 * 1000); // 5 minutes
+
+		// Cleanup interval on unmount
+		return () => clearInterval(pollInterval);
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [userId]);
 
@@ -143,8 +158,11 @@ export default function WalletDashboard({ userId }: { userId: string }) {
 						<h2 className='text-xl font-semibold mb-4'>
 							Request Withdrawal
 						</h2>
-						<p className='text-sm text-gray-600 mb-4'>
+						<p className='text-sm text-gray-600 mb-2'>
 							Minimum withdrawal: ₦2,000
+						</p>
+						<p className='text-sm text-gray-600 mb-4'>
+							Withdrawal fee: ₦100 per transaction
 						</p>
 						<form onSubmit={handleWithdrawal}>
 							<div className='flex gap-4'>
