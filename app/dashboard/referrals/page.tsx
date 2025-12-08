@@ -11,6 +11,10 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Gift, Home, Wallet, LogOut } from 'lucide-react';
 import { signOut } from '@/app/actions/auth';
+import { Metadata } from 'next';
+import { referralsMetadata } from '@/lib/metadata';
+
+export const metadata: Metadata = referralsMetadata;
 
 export default async function ReferralPage() {
 	const user = await getCurrentUser();

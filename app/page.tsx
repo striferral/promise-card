@@ -2,6 +2,8 @@ import { getCurrentUser } from './actions/auth';
 import SignInForm from './components/SignInForm';
 import { redirect } from 'next/navigation';
 import { Gift, Sparkles, Heart, Star } from 'lucide-react';
+import { Metadata } from 'next';
+import { homeMetadata } from '@/lib/metadata';
 import {
 	Card,
 	CardContent,
@@ -9,6 +11,8 @@ import {
 	CardHeader,
 	CardTitle,
 } from '@/components/ui/card';
+
+export const metadata: Metadata = homeMetadata;
 
 export default async function Home({
 	searchParams,

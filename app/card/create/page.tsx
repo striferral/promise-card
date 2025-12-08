@@ -1,6 +1,8 @@
 import { getCurrentUser } from '@/app/actions/auth';
 import { redirect } from 'next/navigation';
 import CreateCardForm from '@/app/components/CreateCardForm';
+import { Metadata } from 'next';
+import { createCardMetadata } from '@/lib/metadata';
 import {
 	Card,
 	CardContent,
@@ -9,6 +11,8 @@ import {
 	CardTitle,
 } from '@/components/ui/card';
 import { Sparkles } from 'lucide-react';
+
+export const metadata: Metadata = createCardMetadata;
 
 export default async function CreateCardPage() {
 	const user = await getCurrentUser();

@@ -4,6 +4,10 @@ import WalletDashboard from '@/app/components/WalletDashboard';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Wallet } from 'lucide-react';
+import { Metadata } from 'next';
+import { walletMetadata } from '@/lib/metadata';
+
+export const metadata: Metadata = walletMetadata;
 
 export default async function WalletPage() {
 	const user = await getCurrentUser();
