@@ -120,6 +120,9 @@ export default function PublicCardView({
 		useState<CardItemWithPromises | null>(null);
 	const [isLoading, setIsLoading] = useState(false);
 	const [promiseSubmitted, setPromiseSubmitted] = useState(false);
+	const [paymentChoice, setPaymentChoice] = useState<'immediate' | 'later'>(
+		'later'
+	);
 
 	async function handlePromise(formData: FormData) {
 		if (!selectedItem) return;
@@ -423,6 +426,71 @@ export default function PublicCardView({
 												your promise
 											</p>
 										</div>
+
+										{selectedItem.itemType === 'cash' && (
+											<div className='space-y-2 p-4 bg-accent/5 border border-accent/20 rounded-lg'>
+												<Label>Payment Choice *</Label>
+												<div className='space-y-2'>
+													<label className='flex items-center space-x-3 cursor-pointer'>
+														<input
+															type='radio'
+															name='paymentChoice'
+															value='immediate'
+															checked={
+																paymentChoice ===
+																'immediate'
+															}
+															onChange={() =>
+																setPaymentChoice(
+																	'immediate'
+																)
+															}
+															disabled={isLoading}
+															className='h-4 w-4'
+														/>
+														<div className='flex-1'>
+															<div className='font-medium'>
+																💳 Pay
+																Immediately
+															</div>
+															<p className='text-xs text-muted-foreground'>
+																Proceed to
+																payment after
+																verification
+															</p>
+														</div>
+													</label>
+													<label className='flex items-center space-x-3 cursor-pointer'>
+														<input
+															type='radio'
+															name='paymentChoice'
+															value='later'
+															checked={
+																paymentChoice ===
+																'later'
+															}
+															onChange={() =>
+																setPaymentChoice(
+																	'later'
+																)
+															}
+															disabled={isLoading}
+															className='h-4 w-4'
+														/>
+														<div className='flex-1'>
+															<div className='font-medium'>
+																📅 Pay Later
+															</div>
+															<p className='text-xs text-muted-foreground'>
+																You&apos;ll
+																receive payment
+																link in email
+															</p>
+														</div>
+													</label>
+												</div>
+											</div>
+										)}
 
 										<div className='space-y-2'>
 											<Label htmlFor='promiserContact'>

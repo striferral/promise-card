@@ -1,6 +1,7 @@
 'use client';
 
 import { verifyPromise } from '@/app/actions/promises';
+import { initializePayment } from '@/app/actions/payments';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import {
@@ -11,11 +12,15 @@ import {
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Loader2, XCircle, Gift, Sparkles, PartyPopper } from 'lucide-react';
+import { toast } from 'sonner';
 
 export function PromiseVerifyForm({ token }: { token: string }) {
 	const [error, setError] = useState<string | null>(null);
 	const [isVerifying, setIsVerifying] = useState(true);
 	const [success, setSuccess] = useState(false);
+	const [redirectToPayment, setRedirectToPayment] = useState(false);
+	const [promiseId, setPromiseId] = useState<string | null>(null);
+	const [processingPayment, setProcessingPayment] = useState(false);
 
 	useEffect(() => {
 		async function verify() {
@@ -28,6 +33,10 @@ export function PromiseVerifyForm({ token }: { token: string }) {
 				} else {
 					setSuccess(true);
 					setIsVerifying(false);
+					if (result.redirectToPayment && result.promiseId) {
+						setRedirectToPayment(true);
+						setPromiseId(result.promiseId);
+					}
 				}
 			} catch (err) {
 				setError('Something went wrong. Please try again.');
@@ -37,6 +46,20 @@ export function PromiseVerifyForm({ token }: { token: string }) {
 
 		verify();
 	}, [token]);
+
+	async function handlePayNow() {
+		if (!promiseId) return;
+
+		setProcessingPayment(true);
+		const result = await initializePayment(promiseId);
+
+		if (result.error) {
+			toast.error(result.error);
+			setProcessingPayment(false);
+		} else if (result.authorizationUrl) {
+			window.location.href = result.authorizationUrl;
+		}
+	}
 
 	if (isVerifying) {
 		return (
@@ -68,20 +91,48 @@ export function PromiseVerifyForm({ token }: { token: string }) {
 								Thank you for confirming your promise! The card
 								owner has been notified of your generous gift.
 							</CardDescription>
-							<p className='text-sm text-muted-foreground'>
-								Your verified promise is now visible on the
-								Christmas Promise Card.
-							</p>
+							{redirectToPayment ? (
+								<p className='text-sm text-accent font-semibold'>
+									You chose to pay immediately. Click below to
+									complete your payment.
+								</p>
+							) : (
+								<p className='text-sm text-muted-foreground'>
+									Your verified promise is now visible on the
+									Christmas Promise Card.
+								</p>
+							)}
 						</div>
-						<Link href='/promiser'>
+						{redirectToPayment && promiseId ? (
 							<Button
 								size='lg'
-								className='w-full bg-gradient-to-r from-primary to-secondary hover:from-primary/90 hover:to-secondary/90'
+								onClick={handlePayNow}
+								disabled={processingPayment}
+								className='w-full bg-gradient-to-r from-accent to-secondary hover:from-accent/90 hover:to-secondary/90'
 							>
-								<Gift className='mr-2 h-5 w-5' />
-								View All My Promises
+								{processingPayment ? (
+									<>
+										<Loader2 className='mr-2 h-5 w-5 animate-spin' />
+										Processing...
+									</>
+								) : (
+									<>
+										<Sparkles className='mr-2 h-5 w-5' />
+										Pay Now
+									</>
+								)}
 							</Button>
-						</Link>
+						) : (
+							<Link href='/promiser'>
+								<Button
+									size='lg'
+									className='w-full bg-gradient-to-r from-primary to-secondary hover:from-primary/90 hover:to-secondary/90'
+								>
+									<Gift className='mr-2 h-5 w-5' />
+									View All My Promises
+								</Button>
+							</Link>
+						)}
 						<div className='flex justify-center gap-3 text-3xl opacity-60'>
 							🎄✨🎅
 						</div>

@@ -12,6 +12,7 @@ export async function makePromise(itemId: string, formData: FormData) {
 	const promiserEmail = formData.get('promiserEmail') as string;
 	const promiserContact = formData.get('promiserContact') as string;
 	const message = formData.get('message') as string;
+	const paymentChoice = (formData.get('paymentChoice') as string) || 'later';
 
 	if (!promiserName) {
 		return { error: 'Please enter your name' };
@@ -42,13 +43,14 @@ export async function makePromise(itemId: string, formData: FormData) {
 		return { error: 'Item not found' };
 	}
 
-	// Create unverified promise
+	// Create unverified promise with payment choice
 	const promise = await prisma.promise.create({
 		data: {
 			promiserName,
 			promiserEmail,
 			promiserContact: promiserContact || null,
 			message: message || null,
+			paymentChoice: item.itemType === 'cash' ? paymentChoice : null,
 			verified: false,
 			itemId,
 		},
@@ -107,6 +109,13 @@ export async function makePromise(itemId: string, formData: FormData) {
 export async function verifyPromise(token: string) {
 	const verificationToken = await prisma.promiseVerificationToken.findUnique({
 		where: { token },
+		include: {
+			promise: {
+				include: {
+					item: true,
+				},
+			},
+		},
 	});
 
 	if (!verificationToken) {
@@ -117,6 +126,8 @@ export async function verifyPromise(token: string) {
 		await prisma.promiseVerificationToken.delete({ where: { token } });
 		return { error: 'Verification link has expired' };
 	}
+
+	const promise = verificationToken.promise;
 
 	// Verify the promise
 	await prisma.promise.update({
@@ -130,5 +141,14 @@ export async function verifyPromise(token: string) {
 	// Delete the verification token
 	await prisma.promiseVerificationToken.delete({ where: { token } });
 
-	return { success: true };
+	// Check if user wants immediate payment for cash items
+	const shouldRedirectToPayment =
+		promise.item.itemType === 'cash' &&
+		promise.paymentChoice === 'immediate';
+
+	return {
+		success: true,
+		redirectToPayment: shouldRedirectToPayment,
+		promiseId: shouldRedirectToPayment ? promise.id : undefined,
+	};
 }

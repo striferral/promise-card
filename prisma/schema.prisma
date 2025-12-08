@@ -98,11 +98,14 @@ model Promise {
   verifiedAt       DateTime?
   fulfilled        Boolean   @default(false)
   fulfilledAt      DateTime?
+  paymentChoice    String?   @default("later") // "immediate" or "later" - for cash promises
   paymentReference String? // Paystack payment reference
   createdAt        DateTime  @default(now())
 
   itemId String
   item   CardItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  verificationToken PromiseVerificationToken?
 
   @@index([itemId])
   @@index([promiserEmail])
@@ -115,6 +118,8 @@ model PromiseVerificationToken {
   email     String
   expiresAt DateTime
   createdAt DateTime @default(now())
+
+  promise Promise @relation(fields: [promiseId], references: [id], onDelete: Cascade)
 
   @@index([token])
   @@index([email])

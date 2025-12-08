@@ -50,7 +50,13 @@ const ITEM_TYPES = [
 
 const NUMERIC_TYPES = ['Money', 'Amount', 'Cash'];
 
-function isNumericType(customType: string | null): boolean {
+function isNumericType(customType: string | null, itemType?: string): boolean {
+	// Check if itemType is 'cash'
+	if (itemType === 'cash') {
+		return true;
+	}
+
+	// Check custom types
 	return (
 		customType !== null &&
 		NUMERIC_TYPES.some(
@@ -80,12 +86,17 @@ export default function EditCardContent({ card }: { card: CardWithDetails }) {
 	async function handleAddItem(formData: FormData) {
 		setIsLoading(true);
 
-		// Validate numeric input for Money type
-		if (selectedItemType === 'custom' && isNumericType(customTypeName)) {
-			const itemName = formData.get('name') as string;
+		// Validate numeric input for cash type or numeric custom types
+		const itemName = formData.get('name') as string;
+		if (
+			selectedItemType === 'cash' ||
+			(selectedItemType === 'custom' && isNumericType(customTypeName))
+		) {
 			if (itemName && isNaN(Number(itemName))) {
+				const typeName =
+					selectedItemType === 'cash' ? 'Cash' : customTypeName;
 				toast.error(
-					`For ${customTypeName} type, item name must be a number (e.g., 1000)`
+					`For ${typeName} type, item name must be a number (e.g., 1000)`
 				);
 				setIsLoading(false);
 				return;
@@ -297,35 +308,40 @@ export default function EditCardContent({ card }: { card: CardWithDetails }) {
 										<div className='space-y-2'>
 											<Label htmlFor='name'>
 												Item Name *
-												{selectedItemType ===
-													'custom' &&
-													isNumericType(
-														customTypeName
-													) && (
-														<span className='text-xs text-muted-foreground ml-2'>
-															(must be a number,
-															e.g., 1000)
-														</span>
-													)}
+												{(selectedItemType === 'cash' ||
+													(selectedItemType ===
+														'custom' &&
+														isNumericType(
+															customTypeName
+														))) && (
+													<span className='text-xs text-muted-foreground ml-2'>
+														(must be a number, e.g.,
+														1000)
+													</span>
+												)}
 											</Label>
 											<Input
 												id='name'
 												name='name'
 												placeholder={
 													selectedItemType ===
+														'cash' ||
+													(selectedItemType ===
 														'custom' &&
-													isNumericType(
-														customTypeName
-													)
+														isNumericType(
+															customTypeName
+														))
 														? '5000'
 														: 'iPhone 16 Pro'
 												}
 												type={
 													selectedItemType ===
+														'cash' ||
+													(selectedItemType ===
 														'custom' &&
-													isNumericType(
-														customTypeName
-													)
+														isNumericType(
+															customTypeName
+														))
 														? 'number'
 														: 'text'
 												}
