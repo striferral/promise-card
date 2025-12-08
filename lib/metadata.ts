@@ -5,7 +5,7 @@ const siteConfig = {
 	description:
 		'Create and share beautiful Christmas wish lists with friends and family. Let them make promises for your special gifts! The perfect way to organize and track Christmas wishes.',
 	url: process.env.NEXT_PUBLIC_APP_URL || 'https://promisecard.com',
-	ogImage: '/og-image.png',
+	ogImage: '/api/og?type=default&title=Christmas Promise Card&description=Create and share your Christmas wish list',
 	keywords: [
 		'Christmas wishes',
 		'Christmas wish list',
@@ -69,7 +69,9 @@ export const defaultMetadata: Metadata = {
 		card: 'summary_large_image',
 		title: siteConfig.name,
 		description: siteConfig.description,
-		images: [siteConfig.ogImage],
+		images: [
+			`/api/og?type=default&title=${encodeURIComponent(siteConfig.name)}&description=${encodeURIComponent(siteConfig.description)}`,
+		],
 		creator: '@promisecard',
 	},
 	robots: {
@@ -102,7 +104,7 @@ export const homeMetadata: Metadata = {
 		type: 'website',
 		images: [
 			{
-				url: '/og-home.png',
+				url: '/api/og?type=home&title=Share Your Christmas Wishes&description=Create and share your wish list with friends and family',
 				width: 1200,
 				height: 630,
 				alt: 'Christmas Promise Card - Create Your Wish List',
@@ -166,6 +168,8 @@ export function generateCardMetadata(
 			ownerName || 'this'
 		} Christmas wish list and make a promise to fulfill their wishes. Share the joy of giving this holiday season!`;
 
+	const ogImageUrl = `/api/og?type=card&title=${encodeURIComponent(title)}&description=${encodeURIComponent(`by ${ownerName || 'Someone Special'}`)}`;
+
 	return {
 		title: cardTitle,
 		description: cardDescription,
@@ -175,7 +179,7 @@ export function generateCardMetadata(
 			type: 'article',
 			images: [
 				{
-					url: '/og-card.png',
+					url: ogImageUrl,
 					width: 1200,
 					height: 630,
 					alt: cardTitle,
@@ -186,6 +190,7 @@ export function generateCardMetadata(
 			card: 'summary_large_image',
 			title: cardTitle,
 			description: cardDescription,
+			images: [ogImageUrl],
 		},
 	};
 }
