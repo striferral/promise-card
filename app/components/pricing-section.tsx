@@ -28,7 +28,7 @@ const plans = [
 	},
 	{
 		name: 'Basic',
-		price: '₦1,500',
+		price: '₦2,000',
 		period: '/month',
 		description: 'Great for active users',
 		features: [
