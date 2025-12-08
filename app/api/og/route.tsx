@@ -115,8 +115,8 @@ export async function GET(request: NextRequest) {
 							{type === 'card'
 								? '🎁'
 								: type === 'home'
-									? '🎄'
-									: '✨'}
+								? '🎄'
+								: '✨'}
 						</div>
 
 						{/* Title */}

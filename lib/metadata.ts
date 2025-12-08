@@ -5,7 +5,8 @@ const siteConfig = {
 	description:
 		'Create and share beautiful Christmas wish lists with friends and family. Let them make promises for your special gifts! The perfect way to organize and track Christmas wishes.',
 	url: process.env.NEXT_PUBLIC_APP_URL || 'https://promisecard.com',
-	ogImage: '/api/og?type=default&title=Christmas Promise Card&description=Create and share your Christmas wish list',
+	ogImage:
+		'/api/og?type=default&title=Christmas Promise Card&description=Create and share your Christmas wish list',
 	keywords: [
 		'Christmas wishes',
 		'Christmas wish list',
@@ -70,7 +71,9 @@ export const defaultMetadata: Metadata = {
 		title: siteConfig.name,
 		description: siteConfig.description,
 		images: [
-			`/api/og?type=default&title=${encodeURIComponent(siteConfig.name)}&description=${encodeURIComponent(siteConfig.description)}`,
+			`/api/og?type=default&title=${encodeURIComponent(
+				siteConfig.name
+			)}&description=${encodeURIComponent(siteConfig.description)}`,
 		],
 		creator: '@promisecard',
 	},
@@ -168,7 +171,11 @@ export function generateCardMetadata(
 			ownerName || 'this'
 		} Christmas wish list and make a promise to fulfill their wishes. Share the joy of giving this holiday season!`;
 
-	const ogImageUrl = `/api/og?type=card&title=${encodeURIComponent(title)}&description=${encodeURIComponent(`by ${ownerName || 'Someone Special'}`)}`;
+	const ogImageUrl = `/api/og?type=card&title=${encodeURIComponent(
+		title
+	)}&description=${encodeURIComponent(
+		`by ${ownerName || 'Someone Special'}`
+	)}`;
 
 	return {
 		title: cardTitle,
