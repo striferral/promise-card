@@ -25,6 +25,7 @@ import {
 	Share2,
 	Sparkles,
 	Users,
+	User,
 } from 'lucide-react';
 
 export default function DashboardContent({ user }: { user: UserWithCards }) {
@@ -106,6 +107,16 @@ export default function DashboardContent({ user }: { user: UserWithCards }) {
 									</Link>
 								</Button>
 							)}
+							<Button
+								asChild
+								variant='secondary'
+								className='bg-white/10 hover:bg-white/20 text-white border-white/20'
+							>
+								<Link href='/dashboard/profile'>
+									<User className='mr-2 h-4 w-4' />
+									Profile
+								</Link>
+							</Button>
 							<Button
 								onClick={() => signOut()}
 								variant='destructive'

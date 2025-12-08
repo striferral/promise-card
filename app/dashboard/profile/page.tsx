@@ -1,32 +1,28 @@
 import { getCurrentUser } from '@/app/actions/auth';
 import { redirect } from 'next/navigation';
-import WalletDashboard from '@/app/components/WalletDashboard';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Wallet } from 'lucide-react';
+import { ArrowLeft, User } from 'lucide-react';
+import ProfileContent from '@/app/components/ProfileContent';
 
-export default async function WalletPage() {
+export default async function ProfilePage() {
 	const user = await getCurrentUser();
 
 	if (!user) {
 		redirect('/');
 	}
 
-	if (!user.accountDetailsSet) {
-		redirect('/dashboard?setupAccount=true');
-	}
-
 	return (
-		<div className='min-h-screen bg-gradient-to-br from-primary via-secondary to-primary'>
+		<div className='min-h-screen bg-linear-to-br from-primary via-secondary to-primary'>
 			<header className='border-b border-white/10 backdrop-blur-sm'>
 				<div className='container mx-auto px-4 py-4'>
 					<div className='flex justify-between items-center'>
 						<div className='flex items-center gap-3'>
 							<div className='h-10 w-10 rounded-full bg-accent/20 flex items-center justify-center'>
-								<Wallet className='h-5 w-5 text-accent' />
+								<User className='h-5 w-5 text-accent' />
 							</div>
 							<h1 className='text-2xl font-serif font-bold text-white'>
-								My Wallet
+								My Profile
 							</h1>
 						</div>
 						<Button
@@ -42,16 +38,7 @@ export default async function WalletPage() {
 					</div>
 				</div>
 			</header>
-			<WalletDashboard
-				userId={user.id}
-				subscriptionPlan={
-					user.subscriptionPlan as 'free' | 'basic' | 'premium'
-				}
-				accountName={user.accountName || ''}
-				accountNumber={user.accountNumber || ''}
-				bankName={user.bankName || ''}
-				paystackRecipientCode={user.paystackRecipientCode}
-			/>
+			<ProfileContent user={user} />
 		</div>
 	);
 }
