@@ -11,6 +11,16 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
+import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 type Withdrawal = {
 	id: string;
@@ -86,6 +96,18 @@ export default function AdminDashboard({ email }: { email: string }) {
 	const [processingId, setProcessingId] = useState<string | null>(null);
 	const [rejectingId, setRejectingId] = useState<string | null>(null);
 	const [rejectReason, setRejectReason] = useState('');
+	const [alertDialog, setAlertDialog] = useState<{
+		open: boolean;
+		title: string;
+		description: string;
+		type: 'info' | 'confirm' | 'error';
+		onConfirm?: () => void;
+	}>({
+		open: false,
+		title: '',
+		description: '',
+		type: 'info',
+	});
 
 	useEffect(() => {
 		async function loadData() {
@@ -112,25 +134,48 @@ export default function AdminDashboard({ email }: { email: string }) {
 	}
 
 	async function handleApprove(withdrawalId: string) {
-		if (!confirm('Are you sure you want to approve this withdrawal?')) {
-			return;
-		}
+		setAlertDialog({
+			open: true,
+			title: 'Approve Withdrawal',
+			description:
+				'Are you sure you want to approve this withdrawal? This action will initiate the transfer.',
+			type: 'confirm',
+			onConfirm: async () => {
+				setProcessingId(withdrawalId);
+				const result = await approveWithdrawal(withdrawalId);
 
-		setProcessingId(withdrawalId);
-		const result = await approveWithdrawal(withdrawalId);
-
-		if (result.success) {
-			alert(result.message);
-			reloadWithdrawals();
-		} else {
-			alert(result.error);
-		}
-		setProcessingId(null);
+				if (result.success) {
+					setAlertDialog({
+						open: true,
+						title: 'Success',
+						description:
+							result.message ||
+							'Withdrawal approved successfully',
+						type: 'info',
+					});
+					reloadWithdrawals();
+				} else {
+					setAlertDialog({
+						open: true,
+						title: 'Error',
+						description:
+							result.error || 'Failed to approve withdrawal',
+						type: 'error',
+					});
+				}
+				setProcessingId(null);
+			},
+		});
 	}
 
 	async function handleReject(withdrawalId: string) {
 		if (!rejectReason.trim()) {
-			alert('Please provide a reason for rejection');
+			setAlertDialog({
+				open: true,
+				title: 'Validation Error',
+				description: 'Please provide a reason for rejection',
+				type: 'error',
+			});
 			return;
 		}
 
@@ -138,12 +183,23 @@ export default function AdminDashboard({ email }: { email: string }) {
 		const result = await rejectWithdrawal(withdrawalId, rejectReason);
 
 		if (result.success) {
-			alert(result.message);
+			setAlertDialog({
+				open: true,
+				title: 'Success',
+				description:
+					result.message || 'Withdrawal rejected successfully',
+				type: 'info',
+			});
 			setRejectingId(null);
 			setRejectReason('');
 			reloadWithdrawals();
 		} else {
-			alert(result.error);
+			setAlertDialog({
+				open: true,
+				title: 'Error',
+				description: result.error || 'Failed to reject withdrawal',
+				type: 'error',
+			});
 		}
 		setProcessingId(null);
 	}
@@ -1121,6 +1177,52 @@ export default function AdminDashboard({ email }: { email: string }) {
 					</Tabs>
 				)}
 			</div>
+
+			{/* Alert Dialog */}
+			<AlertDialog
+				open={alertDialog.open}
+				onOpenChange={(open) =>
+					setAlertDialog((prev) => ({ ...prev, open }))
+				}
+			>
+				<AlertDialogContent>
+					<AlertDialogHeader>
+						<AlertDialogTitle>{alertDialog.title}</AlertDialogTitle>
+						<AlertDialogDescription>
+							{alertDialog.description}
+						</AlertDialogDescription>
+					</AlertDialogHeader>
+					<AlertDialogFooter>
+						{alertDialog.type === 'confirm' ? (
+							<>
+								<AlertDialogCancel>Cancel</AlertDialogCancel>
+								<AlertDialogAction
+									onClick={() => {
+										alertDialog.onConfirm?.();
+										setAlertDialog((prev) => ({
+											...prev,
+											open: false,
+										}));
+									}}
+								>
+									Continue
+								</AlertDialogAction>
+							</>
+						) : (
+							<AlertDialogAction
+								onClick={() =>
+									setAlertDialog((prev) => ({
+										...prev,
+										open: false,
+									}))
+								}
+							>
+								OK
+							</AlertDialogAction>
+						)}
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
 		</div>
 	);
 }

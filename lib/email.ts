@@ -489,6 +489,212 @@ export async function sendPromiseNotificationEmail(
 	}
 }
 
+// Admin notification for withdrawal requests
+export async function sendWithdrawalRequestNotificationEmail(
+	withdrawalId: string,
+	userEmail: string,
+	amount: number,
+	accountName: string,
+	accountNumber: string,
+	bankName: string,
+	userWalletBalance: number
+) {
+	const adminEmails = (process.env.ADMIN_EMAILS || '')
+		.split(',')
+		.map((email) => email.trim())
+		.filter(Boolean);
+
+	if (adminEmails.length === 0) {
+		console.warn('No admin emails configured for withdrawal notifications');
+		return;
+	}
+
+	const adminPortalUrl = `${process.env.NEXT_PUBLIC_APP_URL}/admin`;
+	const formattedAmount = `₦${amount.toLocaleString()}`;
+	const formattedBalance = `₦${userWalletBalance.toLocaleString()}`;
+	const withdrawalIdShort = withdrawalId.slice(-8).toUpperCase();
+
+	const mailOptions = {
+		from: process.env.EMAIL_FROM,
+		to: adminEmails,
+		subject: `🔔 New Withdrawal Request - ${formattedAmount}`,
+		html: `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <style>
+            body {
+              font-family: Arial, sans-serif;
+              background-color: #f4f4f4;
+              margin: 0;
+              padding: 0;
+            }
+            .container {
+              max-width: 600px;
+              margin: 40px auto;
+              background-color: #ffffff;
+              border-radius: 10px;
+              overflow: hidden;
+              box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            }
+            .header {
+              background: linear-gradient(135deg, #c41e3a 0%, #165B33 100%);
+              padding: 40px 20px;
+              text-align: center;
+              color: white;
+            }
+            .header h1 {
+              margin: 0;
+              font-size: 28px;
+            }
+            .alert-icon {
+              font-size: 50px;
+              margin-bottom: 10px;
+            }
+            .content {
+              padding: 40px 30px;
+            }
+            .content p {
+              color: #333;
+              font-size: 16px;
+              line-height: 1.6;
+              margin-bottom: 20px;
+            }
+            .info-box {
+              background-color: #f9f9f9;
+              border-left: 4px solid #c41e3a;
+              padding: 20px;
+              margin: 20px 0;
+              border-radius: 5px;
+            }
+            .info-row {
+              display: flex;
+              justify-content: space-between;
+              padding: 10px 0;
+              border-bottom: 1px solid #e0e0e0;
+            }
+            .info-row:last-child {
+              border-bottom: none;
+            }
+            .info-label {
+              font-weight: bold;
+              color: #666;
+            }
+            .info-value {
+              color: #333;
+              text-align: right;
+            }
+            .amount {
+              font-size: 24px;
+              font-weight: bold;
+              color: #c41e3a;
+              text-align: center;
+              margin: 20px 0;
+            }
+            .button {
+              display: inline-block;
+              padding: 15px 40px;
+              background: linear-gradient(135deg, #c41e3a 0%, #165B33 100%);
+              color: white !important;
+              text-decoration: none;
+              border-radius: 50px;
+              font-weight: bold;
+              font-size: 16px;
+              box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+              text-align: center;
+              margin: 20px auto;
+              display: block;
+              width: fit-content;
+            }
+            .footer {
+              padding: 20px;
+              text-align: center;
+              color: #999;
+              font-size: 12px;
+              background-color: #f9f9f9;
+            }
+            .urgent {
+              background-color: #fff3cd;
+              border: 1px solid #ffc107;
+              padding: 15px;
+              border-radius: 5px;
+              margin: 20px 0;
+              text-align: center;
+              color: #856404;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <div class="alert-icon">🔔</div>
+              <h1>Withdrawal Request</h1>
+            </div>
+            <div class="content">
+              <p>A new withdrawal request has been submitted and requires your attention.</p>
+
+              <div class="amount">${formattedAmount}</div>
+
+              <div class="info-box">
+                <div class="info-row">
+                  <span class="info-label">Request ID:</span>
+                  <span class="info-value">#${withdrawalIdShort}</span>
+                </div>
+                <div class="info-row">
+                  <span class="info-label">User Email:</span>
+                  <span class="info-value">${userEmail}</span>
+                </div>
+                <div class="info-row">
+                  <span class="info-label">Account Name:</span>
+                  <span class="info-value">${accountName}</span>
+                </div>
+                <div class="info-row">
+                  <span class="info-label">Account Number:</span>
+                  <span class="info-value">${accountNumber}</span>
+                </div>
+                <div class="info-row">
+                  <span class="info-label">Bank:</span>
+                  <span class="info-value">${bankName}</span>
+                </div>
+                <div class="info-row">
+                  <span class="info-label">Remaining Balance:</span>
+                  <span class="info-value">${formattedBalance}</span>
+                </div>
+              </div>
+
+              <div class="urgent">
+                <strong>⚠️ Action Required</strong><br/>
+                Please review and process this withdrawal request in the admin portal.
+              </div>
+
+              <a href="${adminPortalUrl}" class="button">Go to Admin Portal</a>
+
+              <p style="color: #666; font-size: 14px; margin-top: 30px;">
+                This withdrawal was automatically deducted from the user's wallet balance (including ₦100 fee).
+                Please process the transfer to the provided bank account as soon as possible.
+              </p>
+            </div>
+            <div class="footer">
+              <p>Christmas Promise Card - Admin Notification</p>
+              <p>This is an automated notification. Please do not reply to this email.</p>
+            </div>
+          </div>
+        </body>
+      </html>
+    `,
+	};
+
+	try {
+		await transporter.sendMail(mailOptions);
+		console.log(
+			`Withdrawal notification sent to admins for request #${withdrawalIdShort}`
+		);
+	} catch (error) {
+		console.error('Withdrawal notification email error:', error);
+		// Don't throw - this is a non-critical notification
+	}
+}
+
 // Generic send email function
 export async function sendEmail(to: string, subject: string, html: string) {
 	const mailOptions = {

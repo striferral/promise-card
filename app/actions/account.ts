@@ -413,6 +413,20 @@ export async function requestWithdrawal(userId: string, amount: number) {
 		},
 	});
 
+	// Send email notification to admins
+	const { sendWithdrawalRequestNotificationEmail } = await import(
+		'@/lib/email'
+	);
+	await sendWithdrawalRequestNotificationEmail(
+		withdrawal.id,
+		user.email,
+		amount,
+		user.accountName!,
+		user.accountNumber!,
+		user.bankName!,
+		updatedUser.walletBalance
+	);
+
 	return { success: true, withdrawalId: withdrawal.id };
 }
 
