@@ -154,30 +154,6 @@ export default function WalletDashboard({
 		}
 	};
 
-	const handleRegenerateRecipient = async () => {
-		if (
-			!confirm(
-				'Are you sure you want to regenerate your Paystack transfer recipient? This should only be done if you need to change your bank account details.'
-			)
-		) {
-			return;
-		}
-
-		setRegenerating(true);
-		const result = await regenerateRecipient();
-		setRegenerating(false);
-
-		if (result.error) {
-			toast.error(result.error);
-		} else {
-			toast.success(
-				'Transfer recipient regenerated successfully! You can now update your account details.'
-			);
-			// Reload page to get updated recipient code
-			window.location.reload();
-		}
-	};
-
 	if (loading) {
 		return (
 			<div className='flex items-center justify-center p-12'>
